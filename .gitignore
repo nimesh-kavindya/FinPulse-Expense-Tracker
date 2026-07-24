@@ -1,0 +1,6 @@
+# Exclude non-project files
+*.docx
+FinPluse Tracker/
+node_modules/
+.DS_Store
+*.log

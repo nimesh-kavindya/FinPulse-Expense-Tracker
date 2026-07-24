@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FinPulse | Modern Expense Tracker & Visual Analytics</title>
+  <meta name="description" content="FinPulse is a sleek, glassmorphism-inspired dark mode expense tracker with real-time visual analytics, month filtering, and local data persistence.">
+  
+  <!-- Google Fonts: Plus Jakarta Sans -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Font Awesome Icons CDN -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- Ambient background glow elements -->
+  <div class="bg-glow blob-1"></div>
+  <div class="bg-glow blob-2"></div>
+  <div class="bg-glow blob-3"></div>
+
+  <div class="app-container">
+    <!-- Header -->
+    <header class="app-header glass-card">
+      <div class="brand">
+        <div class="logo-icon">
+          <i class="fa-solid fa-chart-line"></i>
+          <span class="pulse-dot"></span>
+        </div>
+        <div class="brand-text">
+          <h1>Fin<span>Pulse</span></h1>
+          <p>Personal Finance & Analytics</p>
+        </div>
+      </div>
+
+<!-- Currency Selector -->
+<div class="currency-selector-wrapper" style="display: inline-flex; align-items: center; gap: 0.5rem; margin-left: auto;">
+  <label for="currencySelect"><i class="fa-solid fa-coins"></i> Currency:</label>
+  <select id="currencySelect" class="select-sm">
+    <option value="LKR">Rs. (LKR)</option>
+    <option value="USD">$ (USD)</option>
+  </select>
+</div>
+
+      <div class="header-actions">
+        <button id="resetDemoBtn" class="btn btn-outline" title="Reset to Sample Demo Data">
+          <i class="fa-solid fa-rotate-right"></i> <span>Reset Demo</span>
+        </button>
+        <button id="clearAllBtn" class="btn btn-danger-outline" title="Clear All Data">
+          <i class="fa-solid fa-trash-can"></i> <span>Clear All</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Dashboard Grid -->
+    <main class="dashboard-grid">
+      
+      <!-- Top Summary Metrics Cards -->
+      <section class="summary-cards">
+        <!-- Total Balance -->
+        <div class="glass-card metric-card balance-card">
+          <div class="metric-icon">
+            <i class="fa-solid fa-wallet"></i>
+          </div>
+          <div class="metric-details">
+            <span class="metric-title">Total Balance</span>
+            <h2 id="totalBalance">$0.00</h2>
+            <span class="metric-status" id="balanceStatus"><i class="fa-solid fa-arrow-trend-up"></i> Net Financial Standing</span>
+          </div>
+        </div>
+
+        <!-- Total Income -->
+        <div class="glass-card metric-card income-card">
+          <div class="metric-icon">
+            <i class="fa-solid fa-circle-arrow-down"></i>
+          </div>
+          <div class="metric-details">
+            <span class="metric-title">Total Income</span>
+            <h2 id="totalIncome">$0.00</h2>
+            <span class="metric-status positive"><i class="fa-solid fa-arrow-up"></i> Earned Cashflow</span>
+          </div>
+        </div>
+
+        <!-- Total Expenses -->
+        <div class="glass-card metric-card expense-card">
+          <div class="metric-icon">
+            <i class="fa-solid fa-circle-arrow-up"></i>
+          </div>
+          <div class="metric-details">
+            <span class="metric-title">Total Expenses</span>
+            <h2 id="totalExpenses">$0.00</h2>
+            <span class="metric-status negative"><i class="fa-solid fa-arrow-down"></i> Outflow Spending</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Left Column: Add Transaction Form -->
+      <section class="left-column">
+        <div class="glass-card form-card">
+          <div class="card-header">
+            <h3><i class="fa-solid fa-plus-circle"></i> Add New Transaction</h3>
+            <p>Record your earnings or expenses instantly</p>
+          </div>
+
+          <form id="transactionForm">
+            <!-- Type Selector (Income/Expense Toggle) -->
+            <div class="form-group">
+              <label>Transaction Type</label>
+              <div class="type-toggle-group">
+                <input type="radio" id="typeExpense" name="type" value="expense" checked>
+                <label for="typeExpense" class="toggle-btn toggle-expense">
+                  <i class="fa-solid fa-minus"></i> Expense
+                </label>
+
+                <input type="radio" id="typeIncome" name="type" value="income">
+                <label for="typeIncome" class="toggle-btn toggle-income">
+                  <i class="fa-solid fa-plus"></i> Income
+                </label>
+              </div>
+            </div>
+
+            <!-- Description -->
+            <div class="form-group">
+              <label for="description">Description</label>
+              <div class="input-wrapper">
+                <i class="fa-solid fa-pen input-icon"></i>
+                <input type="text" id="description" placeholder="e.g. Weekly Grocery Run" required maxlength="40">
+              </div>
+            </div>
+
+            <!-- Amount & Category Grid -->
+            <div class="form-row">
+              <div class="form-group">
+                <label for="amount">Amount ($)</label>
+                <div class="input-wrapper">
+                  <i class="fa-solid fa-dollar-sign input-icon"></i>
+                  <input type="number" id="amount" placeholder="0.00" step="0.01" min="0.01" required>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="category">Category</label>
+                <div class="input-wrapper">
+                  <i class="fa-solid fa-shapes input-icon"></i>
+                  <select id="category" required>
+                    <option value="Food">Food & Dining</option>
+                    <option value="Utilities">Utilities & Bills</option>
+                    <option value="Salary">Salary & Income</option>
+                    <option value="Entertainment">Entertainment</option>
+                    <option value="Shopping">Shopping & Lifestyle</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <!-- Date Input -->
+            <div class="form-group">
+              <label for="date">Date</label>
+              <div class="input-wrapper">
+                <i class="fa-solid fa-calendar-day input-icon"></i>
+                <input type="date" id="date" required>
+              </div>
+            </div>
+
+            <!-- Submit Button -->
+            <button type="submit" class="btn btn-primary btn-block">
+              <i class="fa-solid fa-bolt"></i> Add Transaction
+            </button>
+          </form>
+        </div>
+      </section>
+
+      <!-- Right Column: Visual Analytics & Transaction History -->
+      <section class="right-column">
+        <!-- Visual Analytics Chart Card -->
+        <div class="glass-card chart-card">
+          <div class="card-header">
+            <h3><i class="fa-solid fa-chart-pie"></i> Category Breakdown</h3>
+            <span class="badge badge-purple" id="topExpenseCategoryBadge">Top Category: N/A</span>
+          </div>
+          <div class="chart-wrapper">
+            <canvas id="expenseChart"></canvas>
+            <div class="chart-empty-state hidden" id="chartEmptyState">
+              <i class="fa-solid fa-chart-simple"></i>
+              <p>No expense data recorded for this selection.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- History List Card -->
+        <div class="glass-card history-card">
+          <div class="card-header history-header">
+            <div>
+              <h3><i class="fa-solid fa-list-check"></i> History</h3>
+              <span class="count-badge" id="transactionCount">0 Items</span>
+            </div>
+            
+            <!-- Filters & Search -->
+            <div class="history-controls">
+              <!-- Search -->
+              <div class="search-box">
+                <i class="fa-solid fa-magnifying-glass"></i>
+                <input type="text" id="searchInput" placeholder="Search...">
+              </div>
+
+              <!-- Month Filter -->
+              <select id="filterMonth" class="select-sm" title="Filter by Month">
+                <option value="all">All Months</option>
+                <!-- Dynamically populated -->
+              </select>
+
+              <!-- Category Filter -->
+              <select id="filterCategory" class="select-sm" title="Filter by Category">
+                <option value="all">All Categories</option>
+                <option value="Food">Food</option>
+                <option value="Utilities">Utilities</option>
+                <option value="Salary">Salary</option>
+                <option value="Entertainment">Entertainment</option>
+                <option value="Shopping">Shopping</option>
+                <option value="Other">Other</option>
+              </select>
+
+              <!-- Type Filter -->
+              <select id="filterType" class="select-sm" title="Filter by Type">
+                <option value="all">All Types</option>
+                <option value="income">Income</option>
+                <option value="expense">Expense</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Transaction List Scrollable Container -->
+          <div class="transaction-list-container">
+            <ul id="transactionList" class="transaction-list">
+              <!-- Dynamically populated -->
+            </ul>
+            <div id="emptyListState" class="empty-state hidden">
+              <div class="empty-icon"><i class="fa-solid fa-receipt"></i></div>
+              <p class="empty-title">No transactions found</p>
+              <p class="empty-subtitle">Add a transaction above or adjust your search/month filters.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="app-footer">
+      <p>FinPulse &copy; 2026 &bull; Crafted with Glassmorphism Dark UX & Vanilla JS</p>
+    </footer>
+  </div>
+
+  <!-- Custom Confirmation Modal Backdrop -->
+  <div id="confirmModal" class="modal-backdrop hidden">
+    <div class="glass-card modal-card">
+      <div class="modal-header">
+        <div class="modal-icon warning">
+          <i class="fa-solid fa-triangle-exclamation"></i>
+        </div>
+        <div>
+          <h3>Clear All Data?</h3>
+          <p class="modal-subtitle">Permanent action</p>
+        </div>
+      </div>
+      <p class="modal-body">
+        Are you sure you want to delete all transaction records from local storage? This action cannot be undone.
+      </p>
+      <div class="modal-actions">
+        <button id="cancelModalBtn" class="btn btn-outline">Cancel</button>
+        <button id="confirmModalBtn" class="btn btn-danger">Yes, Clear All</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toastContainer" class="toast-container"></div>
+
+  <!-- App Script -->
+  <script src="app.js"></script>
+</body>
+</html>
