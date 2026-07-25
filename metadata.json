@@ -1,0 +1,8 @@
+{
+  "name": "FinPulse",
+  "description": "FinPulse is a sleek expense tracker with real-time visual analytics, month filtering, currency conversion, and local data persistence.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
