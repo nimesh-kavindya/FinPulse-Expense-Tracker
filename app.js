@@ -1,4 +1,4 @@
-/**
+\/**
  * FinPulse - Expense Tracker & Visual Analytics
  * Enhanced Core JavaScript Logic (with LKR & USD Currency Converter)
  */
@@ -21,7 +21,7 @@ const CATEGORY_CONFIG = {
   Other: { icon: 'fa-layer-group', color: '#64748b', bg: 'rgba(100, 116, 139, 0.15)' }
 };
 
-// Initial Demo Data
+// Initial Demo Data (Fallback if storage is completely empty)
 const DEMO_TRANSACTIONS = [
   {
     id: 'demo-1',
@@ -83,7 +83,6 @@ function getFormattedDate(offsetDays = 0) {
 // Application State
 let transactions = [];
 let expenseChartInstance = null;
-let currentModalAction = null; // To track active modal action (Clear All or Reset Demo)
 
 // DOM Elements
 const totalBalanceEl = document.getElementById('totalBalance');
@@ -109,7 +108,6 @@ const filterMonthSelect = document.getElementById('filterMonth');
 const filterCategorySelect = document.getElementById('filterCategory');
 const filterTypeSelect = document.getElementById('filterType');
 
-const resetDemoBtn = document.getElementById('resetDemoBtn');
 const clearAllBtn = document.getElementById('clearAllBtn');
 
 const confirmModal = document.getElementById('confirmModal');
@@ -166,25 +164,13 @@ document.addEventListener('DOMContentLoaded', () => {
   if (filterCategorySelect) filterCategorySelect.addEventListener('change', renderApp);
   if (filterTypeSelect) filterTypeSelect.addEventListener('change', renderApp);
 
-  // Modal Connectors for Reset Demo & Clear All buttons (Fixed with cloning to prevent duplication)
-  if (resetDemoBtn) {
-    const newResetBtn = resetDemoBtn.cloneNode(true);
-    resetDemoBtn.parentNode.replaceChild(newResetBtn, resetDemoBtn);
-
-    newResetBtn.addEventListener('click', (e) => {
-      e.preventDefault();
-      currentModalAction = 'reset';
-      showConfirmModal();
-    });
-  }
-
+  // Clear All Modal Button Setup
   if (clearAllBtn) {
     const newClearAllBtn = clearAllBtn.cloneNode(true);
     clearAllBtn.parentNode.replaceChild(newClearAllBtn, clearAllBtn);
 
     newClearAllBtn.addEventListener('click', (e) => {
       e.preventDefault();
-      currentModalAction = 'clear';
       showConfirmModal();
     });
   }
@@ -198,11 +184,7 @@ document.addEventListener('DOMContentLoaded', () => {
     confirmModalBtn.parentNode.replaceChild(newConfirmBtn, confirmModalBtn);
 
     newConfirmBtn.addEventListener('click', () => {
-      if (currentModalAction === 'reset') {
-        confirmResetDemo();
-      } else if (currentModalAction === 'clear') {
-        confirmClearAll();
-      }
+      confirmClearAll();
       hideConfirmModal();
     });
   }
@@ -474,14 +456,6 @@ window.handleDeleteTransaction = function (id, itemEl) {
 };
 
 // --- Modal Controls & Actions ---
-function confirmResetDemo() {
-  transactions = [...DEMO_TRANSACTIONS];
-  saveTransactions();
-  populateMonthFilter();
-  renderApp();
-  showToast('Demo dataset restored successfully.', 'info');
-}
-
 function confirmClearAll() {
   transactions = [];
   saveTransactions();
@@ -496,7 +470,6 @@ function showConfirmModal() {
 
 function hideConfirmModal() {
   if (confirmModal) confirmModal.classList.add('hidden');
-  currentModalAction = null;
 }
 
 function initChart() {
