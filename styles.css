@@ -1280,6 +1280,7 @@ body {
     padding: 1.25rem;
   }
 }
+
 /* ==========================================
    Safe Loading Screen Styles
    ========================================== */
@@ -1327,22 +1328,91 @@ body {
   font-size: 0.85rem;
   margin: 0;
 }
+
 .btn-export-pdf {
   transition: transform 0.2s ease, opacity 0.2s ease;
 }
+
 .btn-export-pdf:hover {
   opacity: 0.9;
   transform: translateY(-2px);
 }
+
 @media print {
+
   .app-loader-overlay,
   .btn-export-pdf,
   button,
   .no-print {
     display: none !important;
   }
+
   body {
     background: white !important;
     color: black !important;
+  }
+}
+
+/* ==========================================
+   PDF Print / Clean Report Template Styles
+   ========================================== */
+@media print {
+
+  /* මුළු සයිට් එකම සුදු පාට බැක්ග්‍රাউন্ড එකකට මාරු කරනවා */
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    font-family: 'Plus Jakarta Sans', sans-serif !important;
+  }
+
+  /* PDF එකට සේව් වෙද්දී පේන්න හොඳ නැති දේවල් සම්පූර්ණයෙන්ම වහනවා */
+  .app-loader-overlay,
+  .app-header,
+  .left-column,
+  .chart-card,
+  .history-header .history-controls,
+  button,
+  .btn-delete,
+  .no-print {
+    display: none !important;
+  }
+
+  /* ඩෑෂ්බෝඩ් ග్రిඩ් එක සහ මේන් කන්ටේනර් එක සම්පූර්ණ පළලට සෙට් කරනවා */
+  .app-container {
+    max-width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  .dashboard-grid {
+    display: block !important;
+  }
+
+  .right-column {
+    width: 100% !important;
+  }
+
+  /* ඉතිහාසය (History) ටේබල් එක හෝ ලිස්ට් එක ලස්සනට පේන්න හදනවා */
+  .history-card {
+    border: none !important;
+    box-shadow: none !important;
+    background: white !important;
+    padding: 0 !important;
+  }
+
+  .transaction-list-container {
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  .transaction-item {
+    border-bottom: 1px solid #ddd !important;
+    background: transparent !important;
+    color: black !important;
+  }
+
+  /* ඩීලීට් බටන්ස් ප්‍රින්ට් වෙද්දී මැකී යයි */
+  .btn-delete {
+    display: none !important;
   }
 }
