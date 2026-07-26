@@ -161,7 +161,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (cancelModalBtn) {
     cancelModalBtn.addEventListener('click', hideConfirmModal);
   }
-  
+
   if (confirmModalBtn) {
     confirmModalBtn.addEventListener('click', () => {
       confirmClearAll();
@@ -608,5 +608,86 @@ window.addEventListener('load', () => {
     setTimeout(() => {
       appLoader.classList.add('fade-out');
     }, 800);
+  }
+});
+// WebView App Friendly PDF Export (Hidden Iframe Method)
+document.getElementById('exportPdfBtn')?.addEventListener('click', () => {
+  try {
+    let rowsHTML = '';
+    if (transactions.length === 0) {
+      rowsHTML = `<tr><td colspan="4" style="text-align:center; padding: 20px;">No transactions available.</td></tr>`;
+    } else {
+      transactions.forEach(t => {
+        let amtColor = t.type === 'income' ? '#10b981' : '#f43f5e';
+        let amtText = (t.type === 'income' ? '+' : '-') + t.amount + ' ' + currentCurrency;
+        rowsHTML += `
+          <tr style="border-bottom: 1px solid #e2e8f0;">
+            <td style="padding: 10px; color: #1e293b;">${escapeHTML(t.description)}</td>
+            <td style="padding: 10px; color: #64748b;">${t.category}</td>
+            <td style="padding: 10px; color: #64748b;">${t.date}</td>
+            <td style="padding: 10px; text-align: right; font-weight: 600; color: ${amtColor};">${amtText}</td>
+          </tr>
+        `;
+      });
+    }
+
+    const oldIframe = document.getElementById('printIframe');
+    if (oldIframe) oldIframe.remove();
+
+    const iframe = document.createElement('iframe');
+    iframe.id = 'printIframe';
+    iframe.style.position = 'absolute';
+    iframe.style.width = '0px';
+    iframe.style.height = '0px';
+    iframe.style.border = 'none';
+    document.body.appendChild(iframe);
+
+    const doc = iframe.contentWindow.document;
+    doc.open();
+    doc.write(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>FinPulse Financial Report</title>
+        <style>
+          body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; padding: 20px; color: #0f172a; }
+          h2 { margin-bottom: 5px; color: #0f172a; }
+          p { color: #64748b; font-size: 14px; margin-top: 0; }
+          table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+          th { background: #f1f5f9; padding: 10px; text-align: left; font-size: 13px; color: #475569; border-bottom: 2px solid #cbd5e1; }
+          th:last-child { text-align: right; }
+        </style>
+      </head>
+      <body>
+        <h2>FinPulse Expenses Tracker</h2>
+        <p>Financial Analytics Report — Generated on ${new Date().toISOString().split('T')[0]}</p>
+        <hr style="border: none; border-top: 1px solid #cbd5e1; margin: 15px 0;">
+        <table>
+          <thead>
+            <tr>
+              <th>Description</th>
+              <th>Category</th>
+              <th>Date</th>
+              <th style="text-align: right;">Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rowsHTML}
+          </tbody>
+        </table>
+      </body>
+      </html>
+    `);
+    doc.close();
+
+    setTimeout(() => {
+      iframe.contentWindow.focus();
+      iframe.contentWindow.print();
+      showToast('Report generated successfully!', 'success');
+    }, 500);
+
+  } catch (error) {
+    console.error("PDF Export Error:", error);
+    showToast('Failed to generate PDF.', 'error');
   }
 });
