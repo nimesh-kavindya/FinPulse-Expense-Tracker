@@ -40,14 +40,14 @@
         </div>
       </div>
 
-<!-- Currency Selector -->
-<div class="currency-selector-wrapper" style="display: inline-flex; align-items: center; gap: 0.5rem; margin-left: auto;">
-  <label for="currencySelect"><i class="fa-solid fa-coins"></i> Currency:</label>
-  <select id="currencySelect" class="select-sm">
-    <option value="LKR">Rs. (LKR)</option>
-    <option value="USD">$ (USD)</option>
-  </select>
-</div>
+      <!-- Currency Selector -->
+      <div class="currency-selector-wrapper" style="display: inline-flex; align-items: center; gap: 0.5rem; margin-left: auto;">
+        <label for="currencySelect"><i class="fa-solid fa-coins"></i> Currency:</label>
+        <select id="currencySelect" class="select-sm">
+          <option value="LKR">Rs. (LKR)</option>
+          <option value="USD">$ (USD)</option>
+        </select>
+      </div>
 
       <div class="header-actions">
         <button id="resetDemoBtn" class="btn btn-outline" title="Reset to Sample Demo Data">
@@ -138,9 +138,9 @@
             <!-- Amount & Category Grid -->
             <div class="form-row">
               <div class="form-group">
-                <label for="amount">Amount ($)</label>
+                <label for="amount" id="amountLabel">Amount (LKR)</label>
                 <div class="input-wrapper">
-                  <i class="fa-solid fa-dollar-sign input-icon"></i>
+                  <i class="fa-solid fa-indian-rupee-sign input-icon" id="currencySymbolIcon"></i>
                   <input type="number" id="amount" placeholder="0.00" step="0.01" min="0.01" required>
                 </div>
               </div>
@@ -214,7 +214,6 @@
               <!-- Month Filter -->
               <select id="filterMonth" class="select-sm" title="Filter by Month">
                 <option value="all">All Months</option>
-                <!-- Dynamically populated -->
               </select>
 
               <!-- Category Filter -->
@@ -240,7 +239,6 @@
           <!-- Transaction List Scrollable Container -->
           <div class="transaction-list-container">
             <ul id="transactionList" class="transaction-list">
-              <!-- Dynamically populated -->
             </ul>
             <div id="emptyListState" class="empty-state hidden">
               <div class="empty-icon"><i class="fa-solid fa-receipt"></i></div>

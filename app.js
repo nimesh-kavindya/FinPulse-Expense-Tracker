@@ -26,7 +26,7 @@ const DEMO_TRANSACTIONS = [
   {
     id: 'demo-1',
     description: 'Monthly Tech Salary',
-    amount: 1570000.00, // LKR amount
+    amount: 1570000.00,
     type: 'income',
     category: 'Salary',
     date: getFormattedDate(0)
@@ -96,6 +96,9 @@ const amountInput = document.getElementById('amount');
 const categoryInput = document.getElementById('category');
 const dateInput = document.getElementById('date');
 
+const amountLabel = document.getElementById('amountLabel');
+const currencySymbolIcon = document.getElementById('currencySymbolIcon');
+
 const transactionListEl = document.getElementById('transactionList');
 const transactionCountEl = document.getElementById('transactionCount');
 const emptyListStateEl = document.getElementById('emptyListState');
@@ -127,9 +130,13 @@ document.addEventListener('DOMContentLoaded', () => {
   // Setup Currency Selector Value & Event
   if (currencySelect) {
     currencySelect.value = currentCurrency;
+    updateAmountLabelAndIcon(currentCurrency);
+
     currencySelect.addEventListener('change', (e) => {
       currentCurrency = e.target.value;
       localStorage.setItem(CURRENCY_STORAGE_KEY, currentCurrency);
+
+      updateAmountLabelAndIcon(currentCurrency);
       renderApp();
       showToast(`Currency changed to ${currentCurrency}`, 'info');
     });
@@ -167,9 +174,20 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 });
 
-// ==========================================================================
+// Update Form Amount Label and Icon based on Currency
+function updateAmountLabelAndIcon(currency) {
+  if (!amountLabel || !currencySymbolIcon) return;
+
+  if (currency === 'USD') {
+    amountLabel.textContent = 'Amount (USD)';
+    currencySymbolIcon.className = 'fa-solid fa-dollar-sign input-icon';
+  } else {
+    amountLabel.textContent = 'Amount (LKR)';
+    currencySymbolIcon.className = 'fa-solid fa-indian-rupee-sign input-icon';
+  }
+}
+
 // LocalStorage Optimization & Robust Data Validation
-// ==========================================================================
 function validateTransaction(t) {
   return t &&
     typeof t === 'object' &&
@@ -196,7 +214,6 @@ function loadTransactions() {
     showToast('Notice: Restored demo dataset due to storage error.', 'info');
   }
 
-  // Fallback if empty or corrupted
   transactions = [...DEMO_TRANSACTIONS];
   saveTransactions();
 }
@@ -210,12 +227,10 @@ function saveTransactions() {
   }
 }
 
-// ==========================================================================
 // Dynamic Month Filter Helper Functions
-// ==========================================================================
 function getMonthKey(dateStr) {
   if (!dateStr) return '';
-  return dateStr.substring(0, 7); // "YYYY-MM"
+  return dateStr.substring(0, 7);
 }
 
 function formatMonthLabel(monthKey) {
@@ -270,9 +285,7 @@ function getFilteredTransactions() {
   });
 }
 
-// ==========================================================================
 // Full Application Render Pipeline
-// ==========================================================================
 function renderApp() {
   const activeMonth = filterMonthSelect.value;
   const monthTransactions = transactions.filter(t => activeMonth === 'all' || getMonthKey(t.date) === activeMonth);
@@ -372,7 +385,6 @@ function handleAddTransaction(e) {
     return;
   }
 
-  // If user is viewing in USD, convert input amount back to base LKR for storage consistency
   if (currentCurrency === 'USD') {
     amount = amount * USD_TO_LKR_RATE;
   }
@@ -511,7 +523,6 @@ function updateChart(monthTransactions) {
   });
 
   const categories = Object.keys(expenseMap);
-  // Convert chart data values based on selected currency
   const dataValues = categories.map(cat => {
     const rawVal = expenseMap[cat];
     return currentCurrency === 'USD' ? rawVal / USD_TO_LKR_RATE : rawVal;
@@ -549,7 +560,6 @@ function updateChart(monthTransactions) {
   expenseChartInstance.update();
 }
 
-// Currency Formatter Function
 function formatCurrency(val) {
   let convertedVal = val;
   if (currentCurrency === 'USD') {
