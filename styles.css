@@ -1457,3 +1457,19 @@ body {
     color: #0f172a !important;
   }
 }
+
+/* උඩ තියෙන හෙඩර් එක ස්ටිකි කරගන්න */
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  background-color: #0F172A;
+}
+
+/* යට තියෙන නැවිගේෂන් හෝ බටන් බාර් එක ස්ටිකි කරගන්න (අවශ්‍ය නම්) */
+.footer-nav {
+  position: sticky;
+  bottom: 0;
+  z-index: 1000;
+  background-color: #0F172A;
+}
