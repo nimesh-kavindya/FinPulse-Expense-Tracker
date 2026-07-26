@@ -125,7 +125,9 @@ const currencySelect = document.getElementById('currencySelect');
 // Initialize Application
 document.addEventListener('DOMContentLoaded', () => {
   // Set default date picker to today
-  dateInput.value = getFormattedDate(0);
+  if (dateInput) {
+    dateInput.value = getFormattedDate(0);
+  }
 
   // Setup Currency Selector Value & Event
   if (currencySelect) {
@@ -155,23 +157,38 @@ document.addEventListener('DOMContentLoaded', () => {
   renderApp();
 
   // Attach Event Listeners
-  transactionForm.addEventListener('submit', handleAddTransaction);
-  searchInput.addEventListener('input', renderApp);
-  filterMonthSelect.addEventListener('change', renderApp);
-  filterCategorySelect.addEventListener('change', renderApp);
-  filterTypeSelect.addEventListener('change', renderApp);
+  if (transactionForm) {
+    transactionForm.addEventListener('submit', handleAddTransaction);
+  }
+  if (searchInput) searchInput.addEventListener('input', renderApp);
+  if (filterMonthSelect) filterMonthSelect.addEventListener('change', renderApp);
+  if (filterCategorySelect) filterCategorySelect.addEventListener('change', renderApp);
+  if (filterTypeSelect) filterTypeSelect.addEventListener('change', renderApp);
 
-  resetDemoBtn.addEventListener('click', handleResetDemo);
+  // Modal Connectors for Reset Demo & Clear All buttons
+  if (resetDemoBtn) {
+    resetDemoBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      openResetDemoModal();
+    });
+  }
 
-  // Custom Modal Triggers
-  clearAllBtn.addEventListener('click', showConfirmModal);
-  cancelModalBtn.addEventListener('click', hideConfirmModal);
-  confirmModalBtn.addEventListener('click', handleConfirmClearAll);
+  if (clearAllBtn) {
+    clearAllBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      openClearAllModal();
+    });
+  }
+
+  if (cancelModalBtn) cancelModalBtn.addEventListener('click', hideConfirmModal);
+  if (confirmModalBtn) confirmModalBtn.addEventListener('click', handleConfirmClearAll);
 
   // Close modal when clicking backdrop
-  confirmModal.addEventListener('click', (e) => {
-    if (e.target === confirmModal) hideConfirmModal();
-  });
+  if (confirmModal) {
+    confirmModal.addEventListener('click', (e) => {
+      if (e.target === confirmModal) hideConfirmModal();
+    });
+  }
 });
 
 // Update Form Amount Label and Icon based on Currency
@@ -241,6 +258,7 @@ function formatMonthLabel(monthKey) {
 }
 
 function populateMonthFilter() {
+  if (!filterMonthSelect) return;
   const currentSelection = filterMonthSelect.value;
   const monthKeysSet = new Set();
 
@@ -268,10 +286,10 @@ function populateMonthFilter() {
 }
 
 function getFilteredTransactions() {
-  const selectedMonth = filterMonthSelect.value;
-  const selectedCategory = filterCategorySelect.value;
-  const selectedType = filterTypeSelect.value;
-  const searchTerm = searchInput.value.trim().toLowerCase();
+  const selectedMonth = filterMonthSelect ? filterMonthSelect.value : 'all';
+  const selectedCategory = filterCategorySelect ? filterCategorySelect.value : 'all';
+  const selectedType = filterTypeSelect ? filterTypeSelect.value : 'all';
+  const searchTerm = searchInput ? searchInput.value.trim().toLowerCase() : '';
 
   return transactions.filter(t => {
     const matchesMonth = selectedMonth === 'all' || getMonthKey(t.date) === selectedMonth;
@@ -287,7 +305,7 @@ function getFilteredTransactions() {
 
 // Full Application Render Pipeline
 function renderApp() {
-  const activeMonth = filterMonthSelect.value;
+  const activeMonth = filterMonthSelect ? filterMonthSelect.value : 'all';
   const monthTransactions = transactions.filter(t => activeMonth === 'all' || getMonthKey(t.date) === activeMonth);
   const filteredList = getFilteredTransactions();
 
@@ -297,6 +315,7 @@ function renderApp() {
 }
 
 function renderSummaryCards(monthTransactions) {
+  if (!totalBalanceEl || !totalIncomeEl || !totalExpensesEl || !balanceStatusEl) return;
   let income = 0;
   let expenses = 0;
 
@@ -325,6 +344,7 @@ function renderSummaryCards(monthTransactions) {
 }
 
 function renderTransactionList(filteredList) {
+  if (!transactionCountEl || !transactionListEl || !emptyListStateEl) return;
   transactionCountEl.textContent = `${filteredList.length} ${filteredList.length === 1 ? 'Item' : 'Items'}`;
   transactionListEl.innerHTML = '';
 
@@ -376,7 +396,8 @@ function handleAddTransaction(e) {
 
   const description = descriptionInput.value.trim();
   let amount = parseFloat(amountInput.value);
-  const type = document.querySelector('input[name="type"]:checked').value;
+  const typeRadio = document.querySelector('input[name="type"]:checked');
+  const type = typeRadio ? typeRadio.value : 'expense';
   const category = categoryInput.value;
   const date = dateInput.value;
 
@@ -428,20 +449,51 @@ window.handleDeleteTransaction = function (id, itemEl) {
   }, 280);
 };
 
-function handleResetDemo() {
+// --- Modal Controls & Actions ---
+function openResetDemoModal() {
+  const modal = document.getElementById('resetDemoModal');
+  if (modal) modal.style.display = 'flex';
+}
+
+function closeResetDemoModal() {
+  const modal = document.getElementById('resetDemoModal');
+  if (modal) modal.style.display = 'none';
+}
+
+function confirmResetDemo() {
   transactions = [...DEMO_TRANSACTIONS];
   saveTransactions();
   populateMonthFilter();
   renderApp();
+  closeResetDemoModal();
   showToast('Demo dataset restored successfully.', 'info');
 }
 
+function openClearAllModal() {
+  const modal = document.getElementById('clearAllModal');
+  if (modal) modal.style.display = 'flex';
+}
+
+function closeClearAllModal() {
+  const modal = document.getElementById('clearAllModal');
+  if (modal) modal.style.display = 'none';
+}
+
+function confirmClearAll() {
+  transactions = [];
+  saveTransactions();
+  populateMonthFilter();
+  renderApp();
+  closeClearAllModal();
+  showToast('All transaction records cleared.', 'danger');
+}
+
 function showConfirmModal() {
-  confirmModal.classList.remove('hidden');
+  if (confirmModal) confirmModal.classList.remove('hidden');
 }
 
 function hideConfirmModal() {
-  confirmModal.classList.add('hidden');
+  if (confirmModal) confirmModal.classList.add('hidden');
 }
 
 function handleConfirmClearAll() {
@@ -454,7 +506,9 @@ function handleConfirmClearAll() {
 }
 
 function initChart() {
-  const ctx = document.getElementById('expenseChart').getContext('2d');
+  const ctxEl = document.getElementById('expenseChart');
+  if (!ctxEl) return;
+  const ctx = ctxEl.getContext('2d');
 
   expenseChartInstance = new Chart(ctx, {
     type: 'doughnut',
@@ -509,7 +563,7 @@ function initChart() {
 }
 
 function updateChart(monthTransactions) {
-  if (!expenseChartInstance) return;
+  if (!expenseChartInstance || !chartEmptyStateEl || !topExpenseCategoryBadge) return;
 
   const expenseMap = {};
   let totalExpenseVal = 0;
@@ -595,6 +649,7 @@ function escapeHTML(str) {
 }
 
 function showToast(message, type = 'info') {
+  if (!toastContainer) return;
   const toast = document.createElement('div');
   toast.className = `toast toast-${type}`;
 
@@ -616,21 +671,18 @@ function showToast(message, type = 'info') {
     });
   }, 3200);
 }
+
 // Smooth Loading Screen Dismissal with delay
 window.addEventListener('load', () => {
   const appLoader = document.getElementById('appLoader');
   if (appLoader) {
     setTimeout(() => {
       appLoader.classList.add('fade-out');
-    }, 1200); // මෙතන අගය වැඩි කළාම ලෝඩින් ස්ක්‍රීන් එක තව ටික වෙලා තියෙලා යන්නේ
+    }, 1200);
   }
 });
-document.getElementById('exportPdfBtn')?.addEventListener('click', () => {
-  window.print();
-});
-// ==========================================
+
 // WebView App Friendly PDF Export (Hidden Iframe Method)
-// ==========================================
 document.getElementById('exportPdfBtn')?.addEventListener('click', () => {
   try {
     let rowsHTML = '';
@@ -642,7 +694,7 @@ document.getElementById('exportPdfBtn')?.addEventListener('click', () => {
         let amtText = (t.type === 'income' ? '+' : '-') + t.amount + ' ' + currentCurrency;
         rowsHTML += `
           <tr style="border-bottom: 1px solid #e2e8f0;">
-            <td style="padding: 10px; color: #1e293b;">${escapeHtml(t.description)}</td>
+            <td style="padding: 10px; color: #1e293b;">${escapeHTML(t.description)}</td>
             <td style="padding: 10px; color: #64748b;">${t.category}</td>
             <td style="padding: 10px; color: #64748b;">${t.date}</td>
             <td style="padding: 10px; text-align: right; font-weight: 600; color: ${amtColor};">${amtText}</td>
@@ -651,11 +703,9 @@ document.getElementById('exportPdfBtn')?.addEventListener('click', () => {
       });
     }
 
-    // පරණ iframe එකක් තිබ්බ නම් ඉවත් කිරීම
     const oldIframe = document.getElementById('printIframe');
     if (oldIframe) oldIframe.remove();
 
-    // Hidden iframe එකක් හැදීම (WebView වල බ්ලොක් වෙන්නේ නැත)
     const iframe = document.createElement('iframe');
     iframe.id = 'printIframe';
     iframe.style.position = 'absolute';
@@ -702,7 +752,6 @@ document.getElementById('exportPdfBtn')?.addEventListener('click', () => {
     `);
     doc.close();
 
-    // ඩේටා ලෝඩ් වුණාට පස්සේ ප්‍රින්ට් වින්ඩෝ එක කෝල් කිරීම
     setTimeout(() => {
       iframe.contentWindow.focus();
       iframe.contentWindow.print();
@@ -712,47 +761,5 @@ document.getElementById('exportPdfBtn')?.addEventListener('click', () => {
   } catch (error) {
     console.error("PDF Export Error:", error);
     showToast('Failed to generate PDF.', 'error');
-  }
-});
-// --- 1. Reset Demo Modal Functions ---
-function openResetDemoModal() {
-  document.getElementById('resetDemoModal').style.display = 'flex';
-}
-
-function closeResetDemoModal() {
-  document.getElementById('resetDemoModal').style.display = 'none';
-}
-
-function confirmResetDemo() {
-  localStorage.clear();
-  // මෙතැනට ඔයාට ඩිමෝ ඩේටා ලෝඩ් වෙන කෝඩ් එකක් තියෙනවා නම් දාන්න පුළුවන්
-  location.reload();
-}
-
-// --- 2. Clear All Modal Functions ---
-function openClearAllModal() {
-  document.getElementById('clearAllModal').style.display = 'flex';
-}
-
-function closeClearAllModal() {
-  document.getElementById('clearAllModal').style.display = 'none';
-}
-
-function confirmClearAll() {
-  localStorage.clear();
-  location.reload();
-}
-
-// --- 3. Connect Buttons with IDs ---
-document.addEventListener('DOMContentLoaded', () => {
-  const resetDemoBtn = document.getElementById('resetDemoBtn');
-  const clearAllBtn = document.getElementById('clearAllBtn');
-
-  if (resetDemoBtn) {
-    resetDemoBtn.addEventListener('click', openResetDemoModal);
-  }
-
-  if (clearAllBtn) {
-    clearAllBtn.addEventListener('click', openClearAllModal);
   }
 });

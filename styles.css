@@ -1357,18 +1357,14 @@ body {
    Professional Executive PDF Print Template
    ========================================== */
 @media print {
-
-  /* වෘත්තීය මට්ටමේ ප්‍රින්ටින් සෙටින්ග්ස් සහ බැක්ග්‍රাউন্ড කලර්ස් ඇක්ටිව් කිරීම */
   body {
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
     background: #f8fafc !important;
-    /* සාමාන්‍ය වෘත්තීය රිපෝට් වලට ගැළපෙන ලයිට්, ක්ලීන් බැක්ග්‍රাউন্ড එකක් */
     color: #0f172a !important;
     font-family: 'Plus Jakarta Sans', sans-serif !important;
   }
 
-  /* ප්‍රින්ට් වෙද්දී අනවශ්‍ය බටන්ස් සහ ෆෝම්ස් සම්පූර්ණයෙන්ම ඉවත් කිරීම */
   .app-loader-overlay,
   .app-header,
   .left-column,
@@ -1380,7 +1376,6 @@ body {
     display: none !important;
   }
 
-  /* කන්ටේනර් එකේ ස්ටיילස් */
   .app-container {
     max-width: 100% !important;
     padding: 10px !important;
@@ -1395,7 +1390,6 @@ body {
     width: 100% !important;
   }
 
-  /* වෘත්තීය මට්ටමේ ඩීසන්ට් හෙඩර් එකක් සහ ටයිටල් එකක් */
   .history-card::before {
     content: "FINPULSE EXPENSES TRACKER — FINANCIAL ANALYTICS REPORT";
     display: block;
@@ -1408,7 +1402,6 @@ body {
     padding-bottom: 10px;
   }
 
-  /* Summary Cards - වෘත්තීය ආයතනික රිපෝට් එකක වගේ පෙනෙන ලෙස */
   .summary-cards {
     display: flex !important;
     gap: 15px !important;
@@ -1439,7 +1432,6 @@ body {
     margin-top: 5px !important;
   }
 
-  /* ට්‍රාන්සැක්ෂන් ලිස්ට් එක ක්ලීන් රිපෝට් ෆෝමැට් එකකට */
   .history-card {
     background: #ffffff !important;
     border: 1px solid #cbd5e1 !important;
@@ -1458,7 +1450,6 @@ body {
   }
 }
 
-/* උඩ තියෙන හෙඩර් එක ස්ටිකි කරගන්න */
 .header {
   position: sticky;
   top: 0;
@@ -1466,7 +1457,6 @@ body {
   background-color: #0F172A;
 }
 
-/* යට තියෙන නැවිගේෂන් හෝ බටන් බාර් එක ස්ටිකි කරගන්න (අවශ්‍ය නම්) */
 .footer-nav {
   position: sticky;
   bottom: 0;
@@ -1475,8 +1465,6 @@ body {
 }
 
 /* --- Demo Modal Popup Styles --- */
-
-/* Background dark overlay */
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -1490,7 +1478,6 @@ body {
   z-index: 9999;
 }
 
-/* Modal dialog container */
 .modal-box {
   background-color: #1E293B;
   color: #FFFFFF;
@@ -1513,7 +1500,6 @@ body {
   margin-bottom: 20px;
 }
 
-/* Modal action buttons container */
 .modal-buttons {
   display: flex;
   gap: 10px;
