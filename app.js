@@ -83,6 +83,7 @@ function getFormattedDate(offsetDays = 0) {
 // Application State
 let transactions = [];
 let expenseChartInstance = null;
+let currentModalAction = null; // To track active modal action (Clear All or Reset Demo)
 
 // DOM Elements
 const totalBalanceEl = document.getElementById('totalBalance');
@@ -165,32 +166,45 @@ document.addEventListener('DOMContentLoaded', () => {
   if (filterCategorySelect) filterCategorySelect.addEventListener('change', renderApp);
   if (filterTypeSelect) filterTypeSelect.addEventListener('change', renderApp);
 
-  // Modal Connectors for Reset Demo & Clear All buttons
+  // Modal Connectors for Reset Demo & Clear All buttons (Fixed with cloning to prevent duplication)
   if (resetDemoBtn) {
-    resetDemoBtn.addEventListener('click', (e) => {
+    const newResetBtn = resetDemoBtn.cloneNode(true);
+    resetDemoBtn.parentNode.replaceChild(newResetBtn, resetDemoBtn);
+
+    newResetBtn.addEventListener('click', (e) => {
       e.preventDefault();
-      openResetDemoModal();
+      currentModalAction = 'reset';
+      showConfirmModal();
     });
   }
 
   if (clearAllBtn) {
-    // Duplicate popup issue fix: prevent multiple event listeners binding
     const newClearAllBtn = clearAllBtn.cloneNode(true);
     clearAllBtn.parentNode.replaceChild(newClearAllBtn, clearAllBtn);
 
     newClearAllBtn.addEventListener('click', (e) => {
       e.preventDefault();
-      openClearAllModal();
+      currentModalAction = 'clear';
+      showConfirmModal();
     });
   }
 
-  if (cancelModalBtn) cancelModalBtn.addEventListener('click', hideConfirmModal);
+  if (cancelModalBtn) {
+    cancelModalBtn.addEventListener('click', hideConfirmModal);
+  }
 
-  // Clean up confirmModalBtn listeners to prevent duplicate actions
   if (confirmModalBtn) {
     const newConfirmBtn = confirmModalBtn.cloneNode(true);
     confirmModalBtn.parentNode.replaceChild(newConfirmBtn, confirmModalBtn);
-    newConfirmBtn.addEventListener('click', handleConfirmClearAll);
+
+    newConfirmBtn.addEventListener('click', () => {
+      if (currentModalAction === 'reset') {
+        confirmResetDemo();
+      } else if (currentModalAction === 'clear') {
+        confirmClearAll();
+      }
+      hideConfirmModal();
+    });
   }
 
   // Close modal when clicking backdrop
@@ -460,41 +474,12 @@ window.handleDeleteTransaction = function (id, itemEl) {
 };
 
 // --- Modal Controls & Actions ---
-function openResetDemoModal() {
-  const modal = document.getElementById('resetDemoModal');
-  if (modal) modal.style.display = 'flex';
-}
-
-function closeResetDemoModal() {
-  const modal = document.getElementById('resetDemoModal');
-  if (modal) modal.style.display = 'none';
-}
-
 function confirmResetDemo() {
   transactions = [...DEMO_TRANSACTIONS];
   saveTransactions();
   populateMonthFilter();
   renderApp();
-  closeResetDemoModal();
   showToast('Demo dataset restored successfully.', 'info');
-}
-
-function openClearAllModal() {
-  const modal = document.getElementById('clearAllModal');
-  if (modal) {
-    modal.style.display = 'flex';
-  } else {
-    showConfirmModal();
-  }
-}
-
-function closeClearAllModal() {
-  const modal = document.getElementById('clearAllModal');
-  if (modal) {
-    modal.style.display = 'none';
-  } else {
-    hideConfirmModal();
-  }
 }
 
 function confirmClearAll() {
@@ -502,7 +487,6 @@ function confirmClearAll() {
   saveTransactions();
   populateMonthFilter();
   renderApp();
-  closeClearAllModal();
   showToast('All transaction records cleared.', 'danger');
 }
 
@@ -512,16 +496,7 @@ function showConfirmModal() {
 
 function hideConfirmModal() {
   if (confirmModal) confirmModal.classList.add('hidden');
-}
-
-function handleConfirmClearAll() {
-  transactions = [];
-  saveTransactions();
-  populateMonthFilter();
-  renderApp();
-  hideConfirmModal();
-  closeClearAllModal();
-  showToast('All transaction records cleared.', 'danger');
+  currentModalAction = null;
 }
 
 function initChart() {
