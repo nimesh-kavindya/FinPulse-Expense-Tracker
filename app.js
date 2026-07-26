@@ -180,10 +180,10 @@ function updateAmountLabelAndIcon(currency) {
 
   if (currency === 'USD') {
     amountLabel.textContent = 'Amount (USD)';
-    currencySymbolIcon.className = 'fa-solid fa-dollar-sign input-icon';
+    currencySymbolIcon.innerHTML = '<i class="fa-solid fa-dollar-sign"></i>';
   } else {
     amountLabel.textContent = 'Amount (LKR)';
-    currencySymbolIcon.className = 'fa-solid fa-indian-rupee-sign input-icon';
+    currencySymbolIcon.innerHTML = 'Rs.';
   }
 }
 
