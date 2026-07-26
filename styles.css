@@ -1354,18 +1354,21 @@ body {
 }
 
 /* ==========================================
-   Professional PDF Print Report Template
+   Professional Executive PDF Print Template
    ========================================== */
 @media print {
 
-  /* මුළු සයිට් එකම සුදු පාට බැක්ග්‍රাউন্ড එකකට මාරු කරනවා */
+  /* වෘත්තීය මට්ටමේ ප්‍රින්ටින් සෙටින්ග්ස් සහ බැක්ග්‍රাউন্ড කලර්ස් ඇක්ටිව් කිරීම */
   body {
-    background: #ffffff !important;
-    color: #000000 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    background: #f8fafc !important;
+    /* සාමාන්‍ය වෘත්තීය රිපෝට් වලට ගැළපෙන ලයිට්, ක්ලීන් බැක්ග්‍රাউন্ড එකක් */
+    color: #0f172a !important;
     font-family: 'Plus Jakarta Sans', sans-serif !important;
   }
 
-  /* සාමාන්‍ය සයිට් එකේ පේන්න තියෙන බටන්ස්, ෆෝම්ස් සහ අනවශ්‍ය දේවල් වහනවා */
+  /* ප්‍රින්ට් වෙද්දී අනවශ්‍ය බටන්ස් සහ ෆෝම්ස් සම්පූර්ණයෙන්ම ඉවත් කිරීම */
   .app-loader-overlay,
   .app-header,
   .left-column,
@@ -1377,10 +1380,10 @@ body {
     display: none !important;
   }
 
-  /* කන්ටේනර් එක පිරිසිදු A4 ප්‍රින්ට් ෆෝමැට් එකකට සෙට් කරනවා */
+  /* කන්ටේනර් එකේ ස්ටיילස් */
   .app-container {
     max-width: 100% !important;
-    padding: 0 !important;
+    padding: 10px !important;
     margin: 0 !important;
   }
 
@@ -1392,65 +1395,65 @@ body {
     width: 100% !important;
   }
 
-  /* PDF එක උඩින්ම පේන්න ඩිජිටල් හෙඩර් එකක් (Title & Summary) ඇතුළත් කිරීම */
+  /* වෘත්තීය මට්ටමේ ඩීසන්ට් හෙඩර් එකක් සහ ටයිටල් එකක් */
   .history-card::before {
-    content: "FinPulse Expenses Tracker - Financial Report";
+    content: "FINPULSE EXPENSES TRACKER — FINANCIAL ANALYTICS REPORT";
     display: block;
-    font-size: 20px;
+    font-size: 16px;
     font-weight: 700;
-    color: #111;
-    margin-bottom: 15px;
-    border-bottom: 2px solid #333;
-    padding-bottom: 8px;
+    color: #0f172a;
+    letter-spacing: 0.5px;
+    margin-bottom: 20px;
+    border-bottom: 2px solid #0f172a;
+    padding-bottom: 10px;
   }
 
-  /* සෝමාරි කාඩ්ස් (Summary Cards) ටික ප්‍රින්ට් වෙද්දී ලස්සනට පෙන්නන්න */
+  /* Summary Cards - වෘත්තීය ආයතනික රිපෝට් එකක වගේ පෙනෙන ලෙස */
   .summary-cards {
     display: flex !important;
     gap: 15px !important;
-    margin-bottom: 20px !important;
+    margin-bottom: 25px !important;
     page-break-inside: avoid;
   }
 
   .summary-cards .metric-card {
-    border: 1px solid #ccc !important;
-    background: #f9f9f9 !important;
-    padding: 12px 15px !important;
-    border-radius: 6px !important;
+    background: #ffffff !important;
+    border: 1px solid #cbd5e1 !important;
+    padding: 15px !important;
+    border-radius: 8px !important;
     flex: 1 !important;
     box-shadow: none !important;
-    color: #000 !important;
+    color: #0f172a !important;
   }
 
   .summary-cards .metric-title {
     font-size: 11px !important;
-    color: #555 !important;
+    color: #64748b !important;
     text-transform: uppercase;
+    font-weight: 600;
   }
 
   .summary-cards h2 {
-    font-size: 16px !important;
-    color: #000 !important;
+    font-size: 18px !important;
+    color: #0f172a !important;
     margin-top: 5px !important;
   }
 
-  /* ඉතිහාසය (History) ලිස්ට් එක පිරිසිදුව පෙනීමට */
+  /* ට්‍රාන්සැක්ෂන් ලිස්ට් එක ක්ලීන් රිපෝට් ෆෝමැට් එකකට */
   .history-card {
-    border: none !important;
+    background: #ffffff !important;
+    border: 1px solid #cbd5e1 !important;
+    border-radius: 8px !important;
+    padding: 20px !important;
     box-shadow: none !important;
-    background: white !important;
-    padding: 0 !important;
-  }
-
-  .transaction-list-container {
-    max-height: none !important;
-    overflow: visible !important;
   }
 
   .transaction-item {
-    border-bottom: 1px solid #ddd !important;
-    background: transparent !important;
-    color: black !important;
-    padding: 8px 0 !important;
+    background: #f1f5f9 !important;
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 6px !important;
+    margin-bottom: 8px !important;
+    padding: 10px 14px !important;
+    color: #0f172a !important;
   }
 }
