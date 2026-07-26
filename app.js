@@ -616,12 +616,12 @@ function showToast(message, type = 'info') {
     });
   }, 3200);
 }
-// Safe Loading Screen Dismissal
+// Smooth Loading Screen Dismissal with delay
 window.addEventListener('load', () => {
   const appLoader = document.getElementById('appLoader');
   if (appLoader) {
     setTimeout(() => {
       appLoader.classList.add('fade-out');
-    }, 400);
+    }, 1200); // මෙතන අගය වැඩි කළාම ලෝඩින් ස්ක්‍රීන් එක තව ටික වෙලා තියෙලා යන්නේ
   }
 });
