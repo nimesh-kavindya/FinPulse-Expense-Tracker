@@ -610,84 +610,114 @@ window.addEventListener('load', () => {
     }, 800);
   }
 });
-// WebView App Friendly PDF Export (Hidden Iframe Method)
+// Clean & Fixed PDF File Download using jsPDF
 document.getElementById('exportPdfBtn')?.addEventListener('click', () => {
   try {
-    let rowsHTML = '';
+    const { jsPDF } = window.jspdf;
+    if (!jsPDF) {
+      showToast('PDF Library not loaded. Check internet connection.', 'danger');
+      return;
+    }
+
+    const doc = new jsPDF();
+
+    // Calculate Summary Values
+    let totalIncome = 0;
+    let totalExpenses = 0;
+    transactions.forEach(t => {
+      const amt = parseFloat(t.amount) || 0;
+      if (t.type === 'income') totalIncome += amt;
+      else totalExpenses += amt;
+    });
+    const totalBalance = totalIncome - totalExpenses;
+
+    // --- Title & Header ---
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(18);
+    doc.setTextColor(15, 23, 42);
+    doc.text("FinPulse Financial Report", 14, 18);
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.setTextColor(100, 116, 139);
+    doc.text(`Generated: ${new Date().toISOString().split('T')[0]} | Currency: ${currentCurrency}`, 14, 25);
+
+    // --- Summary Section ---
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(11);
+    doc.setTextColor(30, 41, 59);
+    doc.text("Financial Summary", 14, 35);
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.setTextColor(71, 85, 105);
+    doc.text(`Total Balance: ${totalBalance.toLocaleString()} ${currentCurrency}`, 14, 43);
+    doc.text(`Total Income: ${totalIncome.toLocaleString()} ${currentCurrency}`, 14, 50);
+    doc.text(`Total Expenses: ${totalExpenses.toLocaleString()} ${currentCurrency}`, 14, 57);
+
+    // Divider Line
+    doc.setDrawColor(203, 213, 225);
+    doc.setLineWidth(0.5);
+    doc.line(14, 63, 196, 63);
+
+    // --- Table Headers ---
+    let startY = 71;
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.setTextColor(71, 85, 105);
+    doc.text("Description", 14, startY);
+    doc.text("Category", 90, startY);
+    doc.text("Date", 130, startY);
+    doc.text("Amount", 170, startY, { align: 'right' });
+
+    startY += 4;
+    doc.line(14, startY, 196, startY);
+    startY += 8;
+
+    // --- Transactions List ---
     if (transactions.length === 0) {
-      rowsHTML = `<tr><td colspan="4" style="text-align:center; padding: 20px;">No transactions available.</td></tr>`;
+      doc.setFont("helvetica", "italic");
+      doc.setFontSize(10);
+      doc.setTextColor(100, 116, 139);
+      doc.text("No transactions available.", 14, startY);
     } else {
-      transactions.forEach(t => {
-        let amtColor = t.type === 'income' ? '#10b981' : '#f43f5e';
-        let amtText = (t.type === 'income' ? '+' : '-') + t.amount + ' ' + currentCurrency;
-        rowsHTML += `
-          <tr style="border-bottom: 1px solid #e2e8f0;">
-            <td style="padding: 10px; color: #1e293b;">${escapeHTML(t.description)}</td>
-            <td style="padding: 10px; color: #64748b;">${t.category}</td>
-            <td style="padding: 10px; color: #64748b;">${t.date}</td>
-            <td style="padding: 10px; text-align: right; font-weight: 600; color: ${amtColor};">${amtText}</td>
-          </tr>
-        `;
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(10);
+
+      transactions.forEach((t) => {
+        if (startY > 275) {
+          doc.addPage();
+          startY = 20;
+        }
+
+        const isIncome = t.type === 'income';
+        const amtPrefix = isIncome ? '+' : '-';
+        const amountStr = `${amtPrefix} ${t.amount.toLocaleString()} ${currentCurrency}`;
+
+        doc.setTextColor(30, 41, 59);
+        doc.text(t.description.substring(0, 35), 14, startY);
+        doc.text(t.category, 90, startY);
+        doc.text(t.date, 130, startY);
+
+        if (isIncome) {
+          doc.setTextColor(16, 185, 129); // Green
+        } else {
+          doc.setTextColor(244, 63, 94); // Red
+        }
+        doc.text(amountStr, 170, startY, { align: 'right' });
+
+        startY += 8;
+
+        doc.setDrawColor(241, 245, 249);
+        doc.line(14, startY - 2, 196, startY - 2);
       });
     }
 
-    const oldIframe = document.getElementById('printIframe');
-    if (oldIframe) oldIframe.remove();
-
-    const iframe = document.createElement('iframe');
-    iframe.id = 'printIframe';
-    iframe.style.position = 'absolute';
-    iframe.style.width = '0px';
-    iframe.style.height = '0px';
-    iframe.style.border = 'none';
-    document.body.appendChild(iframe);
-
-    const doc = iframe.contentWindow.document;
-    doc.open();
-    doc.write(`
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>FinPulse Financial Report</title>
-        <style>
-          body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; padding: 20px; color: #0f172a; }
-          h2 { margin-bottom: 5px; color: #0f172a; }
-          p { color: #64748b; font-size: 14px; margin-top: 0; }
-          table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-          th { background: #f1f5f9; padding: 10px; text-align: left; font-size: 13px; color: #475569; border-bottom: 2px solid #cbd5e1; }
-          th:last-child { text-align: right; }
-        </style>
-      </head>
-      <body>
-        <h2>FinPulse Expenses Tracker</h2>
-        <p>Financial Analytics Report — Generated on ${new Date().toISOString().split('T')[0]}</p>
-        <hr style="border: none; border-top: 1px solid #cbd5e1; margin: 15px 0;">
-        <table>
-          <thead>
-            <tr>
-              <th>Description</th>
-              <th>Category</th>
-              <th>Date</th>
-              <th style="text-align: right;">Amount</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${rowsHTML}
-          </tbody>
-        </table>
-      </body>
-      </html>
-    `);
-    doc.close();
-
-    setTimeout(() => {
-      iframe.contentWindow.focus();
-      iframe.contentWindow.print();
-      showToast('Report generated successfully!', 'success');
-    }, 500);
+    doc.save(`FinPulse-Report-${new Date().toISOString().split('T')[0]}.pdf`);
+    showToast('PDF downloaded successfully!', 'success');
 
   } catch (error) {
-    console.error("PDF Export Error:", error);
-    showToast('Failed to generate PDF.', 'error');
+    console.error("jsPDF Error:", error);
+    showToast('Failed to generate PDF file.', 'danger');
   }
 });
