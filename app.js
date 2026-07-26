@@ -1,618 +1,374 @@
-/**
- * FinPulse - Expense Tracker & Visual Analytics
- * Enhanced Core JavaScript Logic (with LKR & USD Currency Converter)
- */
+/* ==========================================
+   FinPulse - Main Application Script
+   ========================================== */
 
-// Local Storage Key & Storage Manager
-const STORAGE_KEY = 'finpulse_transactions_v1';
-const CURRENCY_STORAGE_KEY = 'finpulse_currency';
-const USD_TO_LKR_RATE = 326.74; // ඩොලර් එකක දළ අගය (Exchange Rate)
-
-// Current Currency State
-let currentCurrency = localStorage.getItem(CURRENCY_STORAGE_KEY) || 'LKR';
-
-// Category Definitions & Theme Color Mapping
-const CATEGORY_CONFIG = {
-  Food: { icon: 'fa-utensils', color: '#f97316', bg: 'rgba(249, 115, 22, 0.15)' },
-  Utilities: { icon: 'fa-bolt', color: '#3b82f6', bg: 'rgba(59, 130, 246, 0.15)' },
-  Salary: { icon: 'fa-money-bill-wave', color: '#10b981', bg: 'rgba(16, 185, 129, 0.15)' },
-  Entertainment: { icon: 'fa-gamepad', color: '#a855f7', bg: 'rgba(168, 85, 247, 0.15)' },
-  Shopping: { icon: 'fa-bag-shopping', color: '#ec4899', bg: 'rgba(236, 72, 153, 0.15)' },
-  Other: { icon: 'fa-layer-group', color: '#64748b', bg: 'rgba(100, 116, 139, 0.15)' }
-};
-
-// Initial Demo Data
-const DEMO_TRANSACTIONS = [
-  {
-    id: 'demo-1',
-    description: 'Monthly Tech Salary',
-    amount: 1570000.00,
-    type: 'income',
-    category: 'Salary',
-    date: getFormattedDate(0)
-  },
-  {
-    id: 'demo-2',
-    description: 'Grocery & Organic Market',
-    amount: 54000.00,
-    type: 'expense',
-    category: 'Food',
-    date: getFormattedDate(-1)
-  },
-  {
-    id: 'demo-3',
-    description: 'Electricity & Fiber Internet',
-    amount: 31000.00,
-    type: 'expense',
-    category: 'Utilities',
-    date: getFormattedDate(-2)
-  },
-  {
-    id: 'demo-4',
-    description: 'Movie IMAX & Cinema Snacks',
-    amount: 14000.00,
-    type: 'expense',
-    category: 'Entertainment',
-    date: getFormattedDate(-4)
-  },
-  {
-    id: 'demo-5',
-    description: 'Noise Canceling Headphones',
-    amount: 49000.00,
-    type: 'expense',
-    category: 'Shopping',
-    date: getFormattedDate(-5)
-  },
-  {
-    id: 'demo-6',
-    description: 'Freelance UI Design Client',
-    amount: 212000.00,
-    type: 'income',
-    category: 'Salary',
-    date: getFormattedDate(-6)
-  }
-];
-
-// Helper to generate date string relative to today
-function getFormattedDate(offsetDays = 0) {
-  const d = new Date();
-  d.setDate(d.getDate() + offsetDays);
-  return d.toISOString().split('T')[0];
-}
-
-// Application State
-let transactions = [];
-let expenseChartInstance = null;
-
-// DOM Elements
-const totalBalanceEl = document.getElementById('totalBalance');
-const totalIncomeEl = document.getElementById('totalIncome');
-const totalExpensesEl = document.getElementById('totalExpenses');
-const balanceStatusEl = document.getElementById('balanceStatus');
-
-const transactionForm = document.getElementById('transactionForm');
-const descriptionInput = document.getElementById('description');
-const amountInput = document.getElementById('amount');
-const categoryInput = document.getElementById('category');
-const dateInput = document.getElementById('date');
-
-const amountLabel = document.getElementById('amountLabel');
-const currencySymbolIcon = document.getElementById('currencySymbolIcon');
-
-const transactionListEl = document.getElementById('transactionList');
-const transactionCountEl = document.getElementById('transactionCount');
-const emptyListStateEl = document.getElementById('emptyListState');
-
-const searchInput = document.getElementById('searchInput');
-const filterMonthSelect = document.getElementById('filterMonth');
-const filterCategorySelect = document.getElementById('filterCategory');
-const filterTypeSelect = document.getElementById('filterType');
-
-const resetDemoBtn = document.getElementById('resetDemoBtn');
-const clearAllBtn = document.getElementById('clearAllBtn');
-
-const confirmModal = document.getElementById('confirmModal');
-const cancelModalBtn = document.getElementById('cancelModalBtn');
-const confirmModalBtn = document.getElementById('confirmModalBtn');
-
-const topExpenseCategoryBadge = document.getElementById('topExpenseCategoryBadge');
-const chartEmptyStateEl = document.getElementById('chartEmptyState');
-const toastContainer = document.getElementById('toastContainer');
-
-// Currency Selector Element
-const currencySelect = document.getElementById('currencySelect');
-
-// Initialize Application
 document.addEventListener('DOMContentLoaded', () => {
-  // Set default date picker to today
-  dateInput.value = getFormattedDate(0);
+  // DOM Elements
+  const transactionForm = document.getElementById('transactionForm');
+  const descriptionInput = document.getElementById('description');
+  const amountInput = document.getElementById('amount');
+  const categorySelect = document.getElementById('category');
+  const dateInput = document.getElementById('date');
+  const typeExpenseRadio = document.getElementById('typeExpense');
+  const typeIncomeRadio = document.getElementById('typeIncome');
 
-  // Setup Currency Selector Value & Event
-  if (currencySelect) {
-    currencySelect.value = currentCurrency;
-    updateAmountLabelAndIcon(currentCurrency);
+  const totalBalanceEl = document.getElementById('totalBalance');
+  const totalIncomeEl = document.getElementById('totalIncome');
+  const totalExpensesEl = document.getElementById('totalExpenses');
+  const balanceStatusEl = document.getElementById('balanceStatus');
 
-    currencySelect.addEventListener('change', (e) => {
-      currentCurrency = e.target.value;
-      localStorage.setItem(CURRENCY_STORAGE_KEY, currentCurrency);
+  const transactionListEl = document.getElementById('transactionList');
+  const emptyListStateEl = document.getElementById('emptyListState');
+  const transactionCountEl = document.getElementById('transactionCount');
 
-      updateAmountLabelAndIcon(currentCurrency);
-      renderApp();
-      showToast(`Currency changed to ${currentCurrency}`, 'info');
-    });
-  }
+  const searchInput = document.getElementById('searchInput');
+  const filterMonthSelect = document.getElementById('filterMonth');
+  const filterCategorySelect = document.getElementById('filterCategory');
+  const filterTypeSelect = document.getElementById('filterType');
 
-  // Load transactions from localStorage with error handling
-  loadTransactions();
+  const resetDemoBtn = document.getElementById('resetDemoBtn');
+  const clearAllBtn = document.getElementById('clearAllBtn');
+  const currencySelect = document.getElementById('currencySelect');
+  const currencySymbolIcon = document.getElementById('currencySymbolIcon');
+  const amountLabel = document.getElementById('amountLabel');
 
-  // Populate dynamic month dropdown options
-  populateMonthFilter();
+  const confirmModal = document.getElementById('confirmModal');
+  const cancelModalBtn = document.getElementById('cancelModalBtn');
+  const confirmModalBtn = document.getElementById('confirmModalBtn');
 
-  // Initialize Chart.js
+  const chartEmptyState = document.getElementById('chartEmptyState');
+  const topExpenseCategoryBadge = document.getElementById('topExpenseCategoryBadge');
+
+  // State Management
+  let transactions = JSON.parse(localStorage.getItem('finpulse_transactions')) || [];
+  let currentCurrency = localStorage.getItem('finpulse_currency') || 'LKR';
+  let expenseChartInstance = null;
+
+  // Set Default Date to Today
+  dateInput.valueAsDate = new Date();
+  currencySelect.value = currentCurrency;
+
+  // Initialize App
+  updateCurrencyUI();
   initChart();
-
-  // Initial Full Render Pipeline
   renderApp();
 
-  // Attach Event Listeners
+  // Event Listeners
   transactionForm.addEventListener('submit', handleAddTransaction);
-  searchInput.addEventListener('input', renderApp);
-  filterMonthSelect.addEventListener('change', renderApp);
-  filterCategorySelect.addEventListener('change', renderApp);
-  filterTypeSelect.addEventListener('change', renderApp);
+  typeExpenseRadio.addEventListener('change', updateFormTypeUI);
+  typeIncomeRadio.addEventListener('change', updateFormTypeUI);
+
+  searchInput.addEventListener('input', renderTransactions);
+  filterMonthSelect.addEventListener('change', renderTransactions);
+  filterCategorySelect.addEventListener('change', renderTransactions);
+  filterTypeSelect.addEventListener('change', renderTransactions);
 
   resetDemoBtn.addEventListener('click', handleResetDemo);
+  clearAllBtn.addEventListener('click', () => confirmModal.classList.remove('hidden'));
+  cancelModalBtn.addEventListener('click', () => confirmModal.classList.add('hidden'));
+  confirmModalBtn.addEventListener('click', handleClearAll);
 
-  // Custom Modal Triggers
-  clearAllBtn.addEventListener('click', showConfirmModal);
-  cancelModalBtn.addEventListener('click', hideConfirmModal);
-  confirmModalBtn.addEventListener('click', handleConfirmClearAll);
-
-  // Close modal when clicking backdrop
-  confirmModal.addEventListener('click', (e) => {
-    if (e.target === confirmModal) hideConfirmModal();
-  });
-});
-
-// Update Form Amount Label and Icon based on Currency
-function updateAmountLabelAndIcon(currency) {
-  if (!amountLabel || !currencySymbolIcon) return;
-
-  if (currency === 'USD') {
-    amountLabel.textContent = 'Amount (USD)';
-    currencySymbolIcon.innerHTML = '<i class="fa-solid fa-dollar-sign"></i>';
-  } else {
-    amountLabel.textContent = 'Amount (LKR)';
-    currencySymbolIcon.innerHTML = 'Rs.';
-  }
-}
-
-// LocalStorage Optimization & Robust Data Validation
-function validateTransaction(t) {
-  return t &&
-    typeof t === 'object' &&
-    typeof t.id === 'string' &&
-    typeof t.description === 'string' &&
-    !isNaN(parseFloat(t.amount)) &&
-    (t.type === 'income' || t.type === 'expense') &&
-    typeof t.category === 'string' &&
-    typeof t.date === 'string';
-}
-
-function loadTransactions() {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      const parsed = JSON.parse(stored);
-      if (Array.isArray(parsed)) {
-        transactions = parsed.filter(validateTransaction);
-        return;
-      }
-    }
-  } catch (err) {
-    console.error('LocalStorage read error:', err);
-    showToast('Notice: Restored demo dataset due to storage error.', 'info');
-  }
-
-  transactions = [...DEMO_TRANSACTIONS];
-  saveTransactions();
-}
-
-function saveTransactions() {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(transactions));
-  } catch (err) {
-    console.error('LocalStorage write error:', err);
-    showToast('Storage Limit Reached: Could not save transaction.', 'danger');
-  }
-}
-
-// Dynamic Month Filter Helper Functions
-function getMonthKey(dateStr) {
-  if (!dateStr) return '';
-  return dateStr.substring(0, 7);
-}
-
-function formatMonthLabel(monthKey) {
-  if (!monthKey || monthKey === 'all') return 'All Months';
-  const [year, month] = monthKey.split('-');
-  const dateObj = new Date(parseInt(year), parseInt(month) - 1, 1);
-  return new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric' }).format(dateObj);
-}
-
-function populateMonthFilter() {
-  const currentSelection = filterMonthSelect.value;
-  const monthKeysSet = new Set();
-
-  transactions.forEach(t => {
-    const key = getMonthKey(t.date);
-    if (key) monthKeysSet.add(key);
+  currencySelect.addEventListener('change', (e) => {
+    currentCurrency = e.target.value;
+    localStorage.setItem('finpulse_currency', currentCurrency);
+    updateCurrencyUI();
+    renderApp();
+    showToast(`Currency changed to ${currentCurrency}`, 'success');
   });
 
-  const sortedMonthKeys = Array.from(monthKeysSet).sort((a, b) => b.localeCompare(a));
-
-  filterMonthSelect.innerHTML = '<option value="all">All Months</option>';
-
-  sortedMonthKeys.forEach(key => {
-    const option = document.createElement('option');
-    option.value = key;
-    option.textContent = formatMonthLabel(key);
-    filterMonthSelect.appendChild(option);
-  });
-
-  if (sortedMonthKeys.includes(currentSelection)) {
-    filterMonthSelect.value = currentSelection;
-  } else {
-    filterMonthSelect.value = 'all';
-  }
-}
-
-function getFilteredTransactions() {
-  const selectedMonth = filterMonthSelect.value;
-  const selectedCategory = filterCategorySelect.value;
-  const selectedType = filterTypeSelect.value;
-  const searchTerm = searchInput.value.trim().toLowerCase();
-
-  return transactions.filter(t => {
-    const matchesMonth = selectedMonth === 'all' || getMonthKey(t.date) === selectedMonth;
-    const matchesCategory = selectedCategory === 'all' || t.category === selectedCategory;
-    const matchesType = selectedType === 'all' || t.type === selectedType;
-    const matchesSearch = t.description.toLowerCase().includes(searchTerm) ||
-      t.category.toLowerCase().includes(searchTerm) ||
-      t.amount.toString().includes(searchTerm);
-
-    return matchesMonth && matchesCategory && matchesType && matchesSearch;
-  });
-}
-
-// Full Application Render Pipeline
-function renderApp() {
-  const activeMonth = filterMonthSelect.value;
-  const monthTransactions = transactions.filter(t => activeMonth === 'all' || getMonthKey(t.date) === activeMonth);
-  const filteredList = getFilteredTransactions();
-
-  renderSummaryCards(monthTransactions);
-  renderTransactionList(filteredList);
-  updateChart(monthTransactions);
-}
-
-function renderSummaryCards(monthTransactions) {
-  let income = 0;
-  let expenses = 0;
-
-  monthTransactions.forEach(t => {
-    const amt = parseFloat(t.amount) || 0;
-    if (t.type === 'income') {
-      income += amt;
+  function updateCurrencyUI() {
+    if (currentCurrency === 'LKR') {
+      currencySymbolIcon.textContent = 'Rs.';
+      amountLabel.textContent = 'Amount (LKR)';
     } else {
-      expenses += amt;
+      currencySymbolIcon.textContent = '$';
+      amountLabel.textContent = 'Amount (USD)';
     }
-  });
-
-  const balance = income - expenses;
-
-  totalBalanceEl.textContent = formatCurrency(balance);
-  totalIncomeEl.textContent = formatCurrency(income);
-  totalExpensesEl.textContent = formatCurrency(expenses);
-
-  if (balance < 0) {
-    balanceStatusEl.className = 'metric-status negative';
-    balanceStatusEl.innerHTML = `<i class="fa-solid fa-arrow-trend-down"></i> Monthly Deficit Warning`;
-  } else {
-    balanceStatusEl.className = 'metric-status positive';
-    balanceStatusEl.innerHTML = `<i class="fa-solid fa-arrow-trend-up"></i> Net Financial Standing`;
   }
-}
 
-function renderTransactionList(filteredList) {
-  transactionCountEl.textContent = `${filteredList.length} ${filteredList.length === 1 ? 'Item' : 'Items'}`;
-  transactionListEl.innerHTML = '';
+  function formatMoney(amount) {
+    const symbol = currentCurrency === 'LKR' ? 'Rs. ' : '$';
+    return `${symbol}${Number(amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  }
 
-  if (filteredList.length === 0) {
-    emptyListStateEl.classList.remove('hidden');
-  } else {
-    emptyListStateEl.classList.add('hidden');
-    const sorted = [...filteredList].sort((a, b) => new Date(b.date) - new Date(a.date));
+  function updateFormTypeUI() {
+    if (typeIncomeRadio.checked) {
+      categorySelect.value = 'Salary';
+    } else {
+      categorySelect.value = 'Food';
+    }
+  }
 
-    sorted.forEach(item => {
-      const li = document.createElement('li');
-      li.className = 'transaction-item';
-      li.dataset.id = item.id;
+  function handleAddTransaction(e) {
+    e.preventDefault();
 
-      const config = CATEGORY_CONFIG[item.category] || CATEGORY_CONFIG.Other;
-      const isIncome = item.type === 'income';
+    const description = descriptionInput.value.trim();
+    const amount = parseFloat(amountInput.value);
+    const category = categorySelect.value;
+    const date = dateInput.value;
+    const type = typeIncomeRadio.checked ? 'income' : 'expense';
 
-      li.innerHTML = `
-        <div class="item-left">
-          <div class="item-icon" style="background: ${config.bg}; color: ${config.color}; border: 1px solid ${config.color}40;">
-            <i class="fa-solid ${config.icon}"></i>
-          </div>
-          <div class="item-info">
-            <span class="item-title">${escapeHTML(item.description)}</span>
-            <div class="item-meta">
-              <span class="category-tag cat-${item.category}">${item.category}</span>
-              <span>&bull;</span>
-              <span>${formatDisplayDate(item.date)}</span>
+    if (!description || isNaN(amount) || amount <= 0 || !date) {
+      showToast('Please fill out all fields correctly.', 'error');
+      return;
+    }
+
+    const newTransaction = {
+      id: 'txn_' + Date.now(),
+      description,
+      amount,
+      category,
+      date,
+      type
+    };
+
+    transactions.unshift(newTransaction);
+    saveAndRender();
+    transactionForm.reset();
+    dateInput.valueAsDate = new Date();
+    updateFormTypeUI();
+
+    showToast('Transaction added successfully!', 'success');
+  }
+
+  function deleteTransaction(id) {
+    transactions = transactions.filter(t => t.id !== id);
+    saveAndRender();
+    showToast('Transaction removed.', 'success');
+  }
+
+  function handleResetDemo() {
+    const demoData = [
+      { id: 'demo_1', description: 'Monthly Salary', amount: 150000, category: 'Salary', date: '2026-07-01', type: 'income' },
+      { id: 'demo_2', description: 'Supermarket Grocery', amount: 18500, category: 'Food', date: '2026-07-05', type: 'expense' },
+      { id: 'demo_3', description: 'Electricity & Water Bill', amount: 6200, category: 'Utilities', date: '2026-07-10', type: 'expense' },
+      { id: 'demo_4', description: 'Movie Night & Dinner', amount: 4500, category: 'Entertainment', date: '2026-07-15', type: 'expense' },
+      { id: 'demo_5', description: 'New Running Shoes', amount: 12000, category: 'Shopping', date: '2026-07-20', type: 'expense' }
+    ];
+    transactions = demoData;
+    saveAndRender();
+    showToast('Demo sample data loaded!', 'success');
+  }
+
+  function handleClearAll() {
+    transactions = [];
+    saveAndRender();
+    confirmModal.classList.add('hidden');
+    showToast('All transaction records cleared.', 'error');
+  }
+
+  function saveAndRender() {
+    localStorage.setItem('finpulse_transactions', JSON.stringify(transactions));
+    renderApp();
+  }
+
+  function renderApp() {
+    populateMonthFilterOptions();
+    renderSummary();
+    renderTransactions();
+    updateChart();
+  }
+
+  function populateMonthFilterOptions() {
+    const months = [...new Set(transactions.map(t => t.date.substring(0, 7)))].sort().reverse();
+    const currentSelectedMonth = filterMonthSelect.value;
+
+    filterMonthSelect.innerHTML = '<option value="all">All Months</option>';
+    months.forEach(monthStr => {
+      const [year, month] = monthStr.split('-');
+      const dateObj = new Date(year, month - 1, 1);
+      const monthName = dateObj.toLocaleString('en-US', { month: 'long', year: 'numeric' });
+      const option = document.createElement('option');
+      option.value = monthStr;
+      option.textContent = monthName;
+      filterMonthSelect.appendChild(option);
+    });
+
+    if (months.includes(currentSelectedMonth)) {
+      filterMonthSelect.value = currentSelectedMonth;
+    }
+  }
+
+  function getFilteredTransactions() {
+    const searchTerm = searchInput.value.toLowerCase();
+    const selectedMonth = filterMonthSelect.value;
+    const selectedCategory = filterCategorySelect.value;
+    const selectedType = filterTypeSelect.value;
+
+    return transactions.filter(t => {
+      const matchesSearch = t.description.toLowerCase().includes(searchTerm) || t.category.toLowerCase().includes(searchTerm);
+      const matchesMonth = selectedMonth === 'all' || t.date.startsWith(selectedMonth);
+      const matchesCategory = selectedCategory === 'all' || t.category === selectedCategory;
+      const matchesType = selectedType === 'all' || t.type === selectedType;
+
+      return matchesSearch && matchesMonth && matchesCategory && matchesType;
+    });
+  }
+
+  function renderSummary() {
+    const totalIncome = transactions.filter(t => t.type === 'income').reduce((acc, t) => acc + t.amount, 0);
+    const totalExpenses = transactions.filter(t => t.type === 'expense').reduce((acc, t) => acc + t.amount, 0);
+    const totalBalance = totalIncome - totalExpenses;
+
+    totalIncomeEl.textContent = formatMoney(totalIncome);
+    totalExpensesEl.textContent = formatMoney(totalExpenses);
+    totalBalanceEl.textContent = formatMoney(totalBalance);
+
+    if (totalBalance >= 0) {
+      balanceStatusEl.className = 'metric-status positive';
+      balanceStatusEl.innerHTML = '<i class="fa-solid fa-arrow-trend-up"></i> Net Surplus Standing';
+    } else {
+      balanceStatusEl.className = 'metric-status negative';
+      balanceStatusEl.innerHTML = '<i class="fa-solid fa-arrow-trend-down"></i> Net Deficit Standing';
+    }
+  }
+
+  function renderTransactions() {
+    const filtered = getFilteredTransactions();
+    transactionListEl.innerHTML = '';
+    transactionCountEl.textContent = `${filtered.length} Items`;
+
+    if (filtered.length === 0) {
+      emptyListStateEl.classList.remove('hidden');
+    } else {
+      emptyListStateEl.classList.add('hidden');
+      filtered.forEach(t => {
+        const li = document.createElement('li');
+        li.className = 'transaction-item';
+
+        const iconClass = getCategoryIcon(t.category);
+
+        li.innerHTML = `
+          <div class="transaction-info">
+            <div class="transaction-cat-icon cat-${t.category}">
+              <i class="${iconClass}"></i>
+            </div>
+            <div class="transaction-details">
+              <h4>${escapeHtml(t.description)}</h4>
+              <div class="transaction-meta">
+                <span><i class="fa-regular fa-calendar"></i> ${t.date}</span>
+                <span>&bull;</span>
+                <span>${t.category}</span>
+              </div>
             </div>
           </div>
-        </div>
-        <div class="item-right">
-          <span class="item-amount ${isIncome ? 'income' : 'expense'}">
-            ${isIncome ? '+' : '-'}${formatCurrency(item.amount)}
-          </span>
-          <button class="delete-btn" title="Delete Transaction" onclick="handleDeleteTransaction('${item.id}', this.closest('.transaction-item'))">
-            <i class="fa-solid fa-trash-can"></i>
-          </button>
-        </div>
-      `;
-
-      transactionListEl.appendChild(li);
-    });
-  }
-}
-
-function handleAddTransaction(e) {
-  e.preventDefault();
-
-  const description = descriptionInput.value.trim();
-  let amount = parseFloat(amountInput.value);
-  const type = document.querySelector('input[name="type"]:checked').value;
-  const category = categoryInput.value;
-  const date = dateInput.value;
-
-  if (!description || isNaN(amount) || amount <= 0 || !date) {
-    showToast('Please provide valid transaction details.', 'danger');
-    return;
+          <div class="transaction-right">
+            <span class="transaction-amount ${t.type}">
+              ${t.type === 'income' ? '+' : '-'}${formatMoney(t.amount)}
+            </span>
+            <button class="delete-btn" title="Delete Transaction" onclick="window.removeTxn('${t.id}')">
+              <i class="fa-solid fa-trash-can"></i>
+            </button>
+          </div>
+        `;
+        transactionListEl.appendChild(li);
+      });
+    }
   }
 
-  if (currentCurrency === 'USD') {
-    amount = amount * USD_TO_LKR_RATE;
-  }
-
-  const newTransaction = {
-    id: 'tx-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4),
-    description,
-    amount,
-    type,
-    category,
-    date
+  window.removeTxn = function (id) {
+    deleteTransaction(id);
   };
 
-  transactions.unshift(newTransaction);
-  saveTransactions();
-  populateMonthFilter();
-  renderApp();
-
-  descriptionInput.value = '';
-  amountInput.value = '';
-  dateInput.value = getFormattedDate(0);
-  descriptionInput.focus();
-
-  showToast(`Added ${type === 'income' ? 'Income' : 'Expense'}: "${description}"`, 'success');
-}
-
-window.handleDeleteTransaction = function (id, itemEl) {
-  const target = transactions.find(t => t.id === id);
-  if (!target) return;
-
-  if (itemEl) {
-    itemEl.classList.add('deleting');
+  function getCategoryIcon(category) {
+    switch (category) {
+      case 'Food': return 'fa-solid fa-utensils';
+      case 'Utilities': return 'fa-solid fa-bolt';
+      case 'Salary': return 'fa-solid fa-briefcase';
+      case 'Entertainment': return 'fa-solid fa-film';
+      case 'Shopping': return 'fa-solid fa-bag-shopping';
+      default: return 'fa-solid fa-shapes';
+    }
   }
 
-  setTimeout(() => {
-    transactions = transactions.filter(t => t.id !== id);
-    saveTransactions();
-    populateMonthFilter();
-    renderApp();
-    showToast(`Removed "${target.description}"`, 'info');
-  }, 280);
-};
-
-function handleResetDemo() {
-  transactions = [...DEMO_TRANSACTIONS];
-  saveTransactions();
-  populateMonthFilter();
-  renderApp();
-  showToast('Demo dataset restored successfully.', 'info');
-}
-
-function showConfirmModal() {
-  confirmModal.classList.remove('hidden');
-}
-
-function hideConfirmModal() {
-  confirmModal.classList.add('hidden');
-}
-
-function handleConfirmClearAll() {
-  transactions = [];
-  saveTransactions();
-  populateMonthFilter();
-  renderApp();
-  hideConfirmModal();
-  showToast('All transaction records cleared.', 'danger');
-}
-
-function initChart() {
-  const ctx = document.getElementById('expenseChart').getContext('2d');
-
-  expenseChartInstance = new Chart(ctx, {
-    type: 'doughnut',
-    data: {
-      labels: [],
-      datasets: [{
-        data: [],
-        backgroundColor: [],
-        borderColor: '#0f172a',
-        borderWidth: 3,
-        hoverOffset: 6
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      cutout: '72%',
-      plugins: {
-        legend: {
-          position: 'bottom',
-          labels: {
-            color: '#94a3b8',
-            font: { family: 'Plus Jakarta Sans', size: 11, weight: '600' },
-            padding: 14,
-            usePointStyle: true,
-            pointStyle: 'circle'
-          }
-        },
-        tooltip: {
-          backgroundColor: '#0f172a',
-          titleColor: '#f8fafc',
-          bodyColor: '#cbd5e1',
-          borderColor: 'rgba(255, 255, 255, 0.1)',
-          borderWidth: 1,
-          padding: 10,
-          boxPadding: 6,
-          usePointStyle: true,
-          callbacks: {
-            label: function (context) {
-              const label = context.label || '';
-              const value = context.parsed || 0;
-              const total = context.dataset.data.reduce((a, b) => a + b, 0);
-              const percentage = total > 0 ? ((value / total) * 100).toFixed(1) + '%' : '0%';
-              return ` ${label}: ${formatCurrency(value)} (${percentage})`;
+  function initChart() {
+    const ctx = document.getElementById('expenseChart').getContext('2d');
+    expenseChartInstance = new Chart(ctx, {
+      type: 'doughnut',
+      data: {
+        labels: [],
+        datasets: [{
+          data: [],
+          backgroundColor: ['#f59e0b', '#3b82f6', '#10b981', '#a78bfa', '#ec4899', '#94a3b8'],
+          borderWidth: 0,
+          hoverOffset: 6
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: 'right',
+            labels: {
+              color: '#f8fafc',
+              font: { family: 'Plus Jakarta Sans', size: 11 },
+              boxWidth: 12,
+              padding: 12
             }
           }
-        }
-      },
-      animation: { animateScale: true, animateRotate: true, duration: 450, easing: 'easeOutQuart' }
-    }
-  });
-}
-
-function updateChart(monthTransactions) {
-  if (!expenseChartInstance) return;
-
-  const expenseMap = {};
-  let totalExpenseVal = 0;
-
-  monthTransactions.forEach(t => {
-    if (t.type === 'expense') {
-      const amt = parseFloat(t.amount) || 0;
-      expenseMap[t.category] = (expenseMap[t.category] || 0) + amt;
-      totalExpenseVal += amt;
-    }
-  });
-
-  const categories = Object.keys(expenseMap);
-  const dataValues = categories.map(cat => {
-    const rawVal = expenseMap[cat];
-    return currentCurrency === 'USD' ? rawVal / USD_TO_LKR_RATE : rawVal;
-  });
-
-  const bgColors = categories.map(cat => (CATEGORY_CONFIG[cat] ? CATEGORY_CONFIG[cat].color : '#64748b'));
-
-  if (categories.length === 0 || totalExpenseVal === 0) {
-    chartEmptyStateEl.classList.remove('hidden');
-    topExpenseCategoryBadge.textContent = 'Top Category: N/A';
-
-    expenseChartInstance.data.labels = [];
-    expenseChartInstance.data.datasets[0].data = [];
-    expenseChartInstance.data.datasets[0].backgroundColor = [];
-  } else {
-    chartEmptyStateEl.classList.add('hidden');
-
-    let topCat = '';
-    let maxVal = -1;
-    categories.forEach(cat => {
-      if (expenseMap[cat] > maxVal) {
-        maxVal = expenseMap[cat];
-        topCat = cat;
+        },
+        cutout: '70%'
       }
     });
-
-    const topPercentage = ((maxVal / totalExpenseVal) * 100).toFixed(0);
-    topExpenseCategoryBadge.textContent = `Top: ${topCat} (${topPercentage}%)`;
-
-    expenseChartInstance.data.labels = categories;
-    expenseChartInstance.data.datasets[0].data = dataValues;
-    expenseChartInstance.data.datasets[0].backgroundColor = bgColors;
   }
 
-  expenseChartInstance.update();
-}
+  function updateChart() {
+    const filtered = getFilteredTransactions().filter(t => t.type === 'expense');
+    const categoryTotals = {};
 
-function formatCurrency(val) {
-  let convertedVal = val;
-  if (currentCurrency === 'USD') {
-    convertedVal = val / USD_TO_LKR_RATE;
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 2
-    }).format(convertedVal);
-  } else {
-    return new Intl.NumberFormat('en-LK', {
-      style: 'currency',
-      currency: 'LKR',
-      minimumFractionDigits: 2
-    }).format(convertedVal);
-  }
-}
-
-function formatDisplayDate(dateStr) {
-  if (!dateStr) return '';
-  const dateObj = new Date(dateStr + 'T00:00:00');
-  return new Intl.DateTimeFormat('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric'
-  }).format(dateObj);
-}
-
-function escapeHTML(str) {
-  const div = document.createElement('div');
-  div.innerText = str;
-  return div.innerHTML;
-}
-
-function showToast(message, type = 'info') {
-  const toast = document.createElement('div');
-  toast.className = `toast toast-${type}`;
-
-  let iconClass = 'fa-circle-info';
-  if (type === 'success') iconClass = 'fa-circle-check';
-  if (type === 'danger') iconClass = 'fa-circle-exclamation';
-
-  toast.innerHTML = `
-    <i class="fa-solid ${iconClass}"></i>
-    <span>${escapeHTML(message)}</span>
-  `;
-
-  toastContainer.appendChild(toast);
-
-  setTimeout(() => {
-    toast.classList.add('toast-out');
-    toast.addEventListener('animationend', () => {
-      toast.remove();
+    filtered.forEach(t => {
+      categoryTotals[t.category] = (categoryTotals[t.category] || 0) + t.amount;
     });
-  }, 3200);
-}
+
+    const labels = Object.keys(categoryTotals);
+    const data = Object.values(categoryTotals);
+
+    if (labels.length === 0) {
+      chartEmptyState.classList.remove('hidden');
+      topExpenseCategoryBadge.textContent = 'Top Category: N/A';
+    } else {
+      chartEmptyState.classList.add('hidden');
+      const topCategory = labels.reduce((a, b) => categoryTotals[a] > categoryTotals[b] ? a : b);
+      topExpenseCategoryBadge.textContent = `Top Category: ${topCategory}`;
+    }
+
+    expenseChartInstance.data.labels = labels;
+    expenseChartInstance.data.datasets[0].data = data;
+    expenseChartInstance.update();
+  }
+
+  function showToast(message, type = 'success') {
+    const toastContainer = document.getElementById('toastContainer');
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+
+    let icon = 'fa-solid fa-circle-check';
+    if (type === 'error') icon = 'fa-solid fa-circle-exclamation';
+
+    toast.innerHTML = `<i class="${icon}"></i> <span>${message}</span>`;
+    toastContainer.appendChild(toast);
+
+    setTimeout(() => {
+      toast.style.opacity = '0';
+      toast.style.transform = 'translateX(100%)';
+      setTimeout(() => toast.remove(), 300);
+    }, 3000);
+  }
+
+  function escapeHtml(str) {
+    return str.replace(/[&<>'"]/g,
+      tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
+    );
+  }
+});
+
+// Loading Screen Dismissal
+window.addEventListener('load', () => {
+  const appLoader = document.getElementById('appLoader');
+  if (appLoader) {
+    setTimeout(() => {
+      appLoader.classList.add('fade-out');
+    }, 450);
+  }
+});
