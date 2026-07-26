@@ -749,3 +749,26 @@ function dismissLoader() {
     }, 500);
   }
 }
+// Safe Loader Removal Script
+document.addEventListener('DOMContentLoaded', () => {
+  const appLoader = document.getElementById('appLoader');
+  if (appLoader) {
+    setTimeout(() => {
+      appLoader.classList.add('fade-out');
+      setTimeout(() => {
+        appLoader.style.display = 'none';
+      }, 500);
+    }, 300);
+  }
+});
+
+// Fallback just in case
+window.addEventListener('load', () => {
+  const appLoader = document.getElementById('appLoader');
+  if (appLoader) {
+    appLoader.classList.add('fade-out');
+    setTimeout(() => {
+      appLoader.style.display = 'none';
+    }, 500);
+  }
+});
