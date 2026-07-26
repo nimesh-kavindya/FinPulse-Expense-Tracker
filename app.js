@@ -629,59 +629,80 @@ document.getElementById('exportPdfBtn')?.addEventListener('click', () => {
   window.print();
 });
 // ==========================================
-// Professional PDF Export using jsPDF for Mobile & Desktop
+// WebView App Friendly PDF Export (HTML Print Window)
 // ==========================================
 document.getElementById('exportPdfBtn')?.addEventListener('click', () => {
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF();
+  try {
+    // රිපෝට් එකට අවශ්‍ය HTML කෝඩ් එක හැදීම
+    let rowsHTML = '';
+    if (transactions.length === 0) {
+      rowsHTML = `<tr><td colspan="4" style="text-align:center; padding: 20px;">No transactions available.</td></tr>`;
+    } else {
+      transactions.forEach(t => {
+        let amtColor = t.type === 'income' ? '#10b981' : '#f43f5e';
+        let amtText = (t.type === 'income' ? '+' : '-') + t.amount + ' ' + currentCurrency;
+        rowsHTML += `
+          <tr style="border-bottom: 1px solid #e2e8f0;">
+            <td style="padding: 10px; color: #1e293b;">${escapeHtml(t.description)}</td>
+            <td style="padding: 10px; color: #64748b;">${t.category}</td>
+            <td style="padding: 10px; color: #64748b;">${t.date}</td>
+            <td style="padding: 10px; text-align: right; font-weight: 600; color: ${amtColor};">${amtText}</td>
+          </tr>
+        `;
+      });
+    }
 
-  // Title
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(16);
-  doc.text("FinPulse Expenses Tracker", 14, 20);
+    // අලුත් වින්ඩෝ එකක හෝ ටැබ් එකක රිපෝට් එක ලෝඩ් කිරීම (WebView වලත් ඩිරෙක්ට් වැඩ කරයි)
+    let printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      showToast('Pop-up blocked! Please allow pop-ups for this app.', 'error');
+      return;
+    }
 
-  doc.setFontSize(10);
-  doc.setFont("helvetica", "normal");
-  doc.setTextColor(100);
-  doc.text("Financial Analytics Report", 14, 26);
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>FinPulse Financial Report</title>
+        <style>
+          body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; padding: 20px; color: #0f172a; }
+          h2 { margin-bottom: 5px; color: #0f172a; }
+          p { color: #64748b; font-size: 14px; margin-top: 0; }
+          table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+          th { background: #f1f5f9; padding: 10px; text-align: left; font-size: 13px; color: #475569; border-bottom: 2px solid #cbd5e1; }
+          th:last-child { text-align: right; }
+        </style>
+      </head>
+      <body>
+        <h2>FinPulse Expenses Tracker</h2>
+        <p>Financial Analytics Report — Generated on ${new Date().toISOString().split('T')[0]}</p>
+        <hr style="border: none; border-top: 1px solid #cbd5e1; margin: 15px 0;">
+        <table>
+          <thead>
+            <tr>
+              <th>Description</th>
+              <th>Category</th>
+              <th>Date</th>
+              <th style="text-align: right;">Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rowsHTML}
+          </tbody>
+        </table>
+        <script>
+          window.onload = function() {
+            window.print();
+          };
+        </script>
+      </body>
+      </html>
+    `);
+    printWindow.document.close();
+    showToast('Preparing report for PDF...', 'success');
 
-  doc.setLineWidth(0.5);
-  doc.line(14, 30, 196, 30);
-
-  // Table Headers / Content from Transactions
-  let y = 40;
-  doc.setFontSize(11);
-  doc.setFont("helvetica", "bold");
-  doc.setTextColor(0);
-  doc.text("Description", 14, y);
-  doc.text("Category", 100, y);
-  doc.text("Amount", 160, y);
-
-  y += 8;
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(10);
-
-  if (transactions.length === 0) {
-    doc.text("No transactions available.", 14, y);
-  } else {
-    transactions.forEach(t => {
-      if (y > 270) { // New page if limit reached
-        doc.addPage();
-        y = 20;
-      }
-
-      let desc = t.description.length > 35 ? t.description.substring(0, 32) + '...' : t.description;
-      let amtText = (t.type === 'income' ? '+' : '-') + t.amount + ' ' + currentCurrency;
-
-      doc.text(desc, 14, y);
-      doc.text(t.category, 100, y);
-      doc.text(amtText, 160, y);
-
-      y += 8;
-    });
+  } catch (error) {
+    console.error("PDF Export Error:", error);
+    showToast('Failed to generate PDF.', 'error');
   }
-
-  // Save PDF file (Mobile & PC friendly)
-  doc.save(`finpulse_report_${new Date().toISOString().split('T')[0]}.pdf`);
-  showToast('PDF downloaded successfully!', 'success');
 });
