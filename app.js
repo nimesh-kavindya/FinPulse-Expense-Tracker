@@ -730,3 +730,22 @@ document.getElementById('exportPdfBtn')?.addEventListener('click', () => {
     showToast('Failed to generate PDF.', 'error');
   }
 });
+// Robust Loader Dismissal with Fallback Timeout
+window.addEventListener('load', () => {
+  dismissLoader();
+});
+
+// Fallback: Safety timeout if window load event takes too long or fails
+setTimeout(() => {
+  dismissLoader();
+}, 2000);
+
+function dismissLoader() {
+  const appLoader = document.getElementById('appLoader');
+  if (appLoader && !appLoader.classList.contains('fade-out')) {
+    appLoader.classList.add('fade-out');
+    setTimeout(() => {
+      appLoader.style.display = 'none';
+    }, 500);
+  }
+}
