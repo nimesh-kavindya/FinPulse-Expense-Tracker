@@ -174,14 +174,24 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   if (clearAllBtn) {
-    clearAllBtn.addEventListener('click', (e) => {
+    // Duplicate popup issue fix: prevent multiple event listeners binding
+    const newClearAllBtn = clearAllBtn.cloneNode(true);
+    clearAllBtn.parentNode.replaceChild(newClearAllBtn, clearAllBtn);
+
+    newClearAllBtn.addEventListener('click', (e) => {
       e.preventDefault();
       openClearAllModal();
     });
   }
 
   if (cancelModalBtn) cancelModalBtn.addEventListener('click', hideConfirmModal);
-  if (confirmModalBtn) confirmModalBtn.addEventListener('click', handleConfirmClearAll);
+
+  // Clean up confirmModalBtn listeners to prevent duplicate actions
+  if (confirmModalBtn) {
+    const newConfirmBtn = confirmModalBtn.cloneNode(true);
+    confirmModalBtn.parentNode.replaceChild(newConfirmBtn, confirmModalBtn);
+    newConfirmBtn.addEventListener('click', handleConfirmClearAll);
+  }
 
   // Close modal when clicking backdrop
   if (confirmModal) {
@@ -471,12 +481,20 @@ function confirmResetDemo() {
 
 function openClearAllModal() {
   const modal = document.getElementById('clearAllModal');
-  if (modal) modal.style.display = 'flex';
+  if (modal) {
+    modal.style.display = 'flex';
+  } else {
+    showConfirmModal();
+  }
 }
 
 function closeClearAllModal() {
   const modal = document.getElementById('clearAllModal');
-  if (modal) modal.style.display = 'none';
+  if (modal) {
+    modal.style.display = 'none';
+  } else {
+    hideConfirmModal();
+  }
 }
 
 function confirmClearAll() {
@@ -502,6 +520,7 @@ function handleConfirmClearAll() {
   populateMonthFilter();
   renderApp();
   hideConfirmModal();
+  closeClearAllModal();
   showToast('All transaction records cleared.', 'danger');
 }
 
