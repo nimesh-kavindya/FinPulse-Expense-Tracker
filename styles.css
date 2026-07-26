@@ -1354,7 +1354,7 @@ body {
 }
 
 /* ==========================================
-   PDF Print / Clean Report Template Styles
+   Professional PDF Print Report Template
    ========================================== */
 @media print {
 
@@ -1365,7 +1365,7 @@ body {
     font-family: 'Plus Jakarta Sans', sans-serif !important;
   }
 
-  /* PDF එකට සේව් වෙද්දී පේන්න හොඳ නැති දේවල් සම්පූර්ණයෙන්ම වහනවා */
+  /* සාමාන්‍ය සයිට් එකේ පේන්න තියෙන බටන්ස්, ෆෝම්ස් සහ අනවශ්‍ය දේවල් වහනවා */
   .app-loader-overlay,
   .app-header,
   .left-column,
@@ -1377,7 +1377,7 @@ body {
     display: none !important;
   }
 
-  /* ඩෑෂ්බෝඩ් ග్రిඩ් එක සහ මේන් කන්ටේනර් එක සම්පූර්ණ පළලට සෙට් කරනවා */
+  /* කන්ටේනර් එක පිරිසිදු A4 ප්‍රින්ට් ෆෝමැට් එකකට සෙට් කරනවා */
   .app-container {
     max-width: 100% !important;
     padding: 0 !important;
@@ -1392,7 +1392,49 @@ body {
     width: 100% !important;
   }
 
-  /* ඉතිහාසය (History) ටේබල් එක හෝ ලිස්ට් එක ලස්සනට පේන්න හදනවා */
+  /* PDF එක උඩින්ම පේන්න ඩිජිටල් හෙඩර් එකක් (Title & Summary) ඇතුළත් කිරීම */
+  .history-card::before {
+    content: "FinPulse Expenses Tracker - Financial Report";
+    display: block;
+    font-size: 20px;
+    font-weight: 700;
+    color: #111;
+    margin-bottom: 15px;
+    border-bottom: 2px solid #333;
+    padding-bottom: 8px;
+  }
+
+  /* සෝමාරි කාඩ්ස් (Summary Cards) ටික ප්‍රින්ට් වෙද්දී ලස්සනට පෙන්නන්න */
+  .summary-cards {
+    display: flex !important;
+    gap: 15px !important;
+    margin-bottom: 20px !important;
+    page-break-inside: avoid;
+  }
+
+  .summary-cards .metric-card {
+    border: 1px solid #ccc !important;
+    background: #f9f9f9 !important;
+    padding: 12px 15px !important;
+    border-radius: 6px !important;
+    flex: 1 !important;
+    box-shadow: none !important;
+    color: #000 !important;
+  }
+
+  .summary-cards .metric-title {
+    font-size: 11px !important;
+    color: #555 !important;
+    text-transform: uppercase;
+  }
+
+  .summary-cards h2 {
+    font-size: 16px !important;
+    color: #000 !important;
+    margin-top: 5px !important;
+  }
+
+  /* ඉතිහාසය (History) ලිස්ට් එක පිරිසිදුව පෙනීමට */
   .history-card {
     border: none !important;
     box-shadow: none !important;
@@ -1409,10 +1451,6 @@ body {
     border-bottom: 1px solid #ddd !important;
     background: transparent !important;
     color: black !important;
-  }
-
-  /* ඩීලීට් බටන්ස් ප්‍රින්ට් වෙද්දී මැකී යයි */
-  .btn-delete {
-    display: none !important;
+    padding: 8px 0 !important;
   }
 }
