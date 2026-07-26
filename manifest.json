@@ -2,7 +2,7 @@
   "name": "FinPulse Expenses Tracker",
   "short_name": "FinPulse",
   "start_url": "./index.html",
-  "display": "standalone",
+  "display": "fullscreen",
   "background_color": "#0F172A",
   "theme_color": "#0EA5E9",
   "description": "A smart financial analytics and expenses tracker app to manage your daily transactions easily.",
