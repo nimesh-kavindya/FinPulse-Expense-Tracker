@@ -629,11 +629,10 @@ document.getElementById('exportPdfBtn')?.addEventListener('click', () => {
   window.print();
 });
 // ==========================================
-// WebView App Friendly PDF Export (HTML Print Window)
+// WebView App Friendly PDF Export (Hidden Iframe Method)
 // ==========================================
 document.getElementById('exportPdfBtn')?.addEventListener('click', () => {
   try {
-    // රිපෝට් එකට අවශ්‍ය HTML කෝඩ් එක හැදීම
     let rowsHTML = '';
     if (transactions.length === 0) {
       rowsHTML = `<tr><td colspan="4" style="text-align:center; padding: 20px;">No transactions available.</td></tr>`;
@@ -652,14 +651,22 @@ document.getElementById('exportPdfBtn')?.addEventListener('click', () => {
       });
     }
 
-    // අලුත් වින්ඩෝ එකක හෝ ටැබ් එකක රිපෝට් එක ලෝඩ් කිරීම (WebView වලත් ඩිරෙක්ට් වැඩ කරයි)
-    let printWindow = window.open('', '_blank');
-    if (!printWindow) {
-      showToast('Pop-up blocked! Please allow pop-ups for this app.', 'error');
-      return;
-    }
+    // පරණ iframe එකක් තිබ්බ නම් ඉවත් කිරීම
+    const oldIframe = document.getElementById('printIframe');
+    if (oldIframe) oldIframe.remove();
 
-    printWindow.document.write(`
+    // Hidden iframe එකක් හැදීම (WebView වල බ්ලොක් වෙන්නේ නැත)
+    const iframe = document.createElement('iframe');
+    iframe.id = 'printIframe';
+    iframe.style.position = 'absolute';
+    iframe.style.width = '0px';
+    iframe.style.height = '0px';
+    iframe.style.border = 'none';
+    document.body.appendChild(iframe);
+
+    const doc = iframe.contentWindow.document;
+    doc.open();
+    doc.write(`
       <!DOCTYPE html>
       <html>
       <head>
@@ -690,16 +697,17 @@ document.getElementById('exportPdfBtn')?.addEventListener('click', () => {
             ${rowsHTML}
           </tbody>
         </table>
-        <script>
-          window.onload = function() {
-            window.print();
-          };
-        </script>
       </body>
       </html>
     `);
-    printWindow.document.close();
-    showToast('Preparing report for PDF...', 'success');
+    doc.close();
+
+    // ඩේටා ලෝඩ් වුණාට පස්සේ ප්‍රින්ට් වින්ඩෝ එක කෝල් කිරීම
+    setTimeout(() => {
+      iframe.contentWindow.focus();
+      iframe.contentWindow.print();
+      showToast('Report generated successfully!', 'success');
+    }, 500);
 
   } catch (error) {
     console.error("PDF Export Error:", error);
