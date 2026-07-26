@@ -5,6 +5,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>FinPulse | Modern Expense Tracker & Visual Analytics</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <meta name="description"
     content="FinPulse is a sleek, glassmorphism-inspired dark mode expense tracker with real-time visual analytics, month filtering, and local data persistence.">
 
@@ -225,7 +226,8 @@
             <!-- PDF Export Button & Filters -->
             <div class="history-controls" style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
               <!-- Export to PDF Button -->
-              <button id="exportPdfBtn" class="btn-export-pdf" title="Export Dashboard to PDF" style="background: #ef4444; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 5px;">
+              <button id="exportPdfBtn" class="btn-export-pdf" title="Export Dashboard to PDF"
+                style="background: #ef4444; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 5px;">
                 <i class="fa-solid fa-file-pdf"></i> PDF
               </button>
 

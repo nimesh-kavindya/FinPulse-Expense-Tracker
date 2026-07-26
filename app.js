@@ -628,3 +628,60 @@ window.addEventListener('load', () => {
 document.getElementById('exportPdfBtn')?.addEventListener('click', () => {
   window.print();
 });
+// ==========================================
+// Professional PDF Export using jsPDF for Mobile & Desktop
+// ==========================================
+document.getElementById('exportPdfBtn')?.addEventListener('click', () => {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+
+  // Title
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(16);
+  doc.text("FinPulse Expenses Tracker", 14, 20);
+
+  doc.setFontSize(10);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(100);
+  doc.text("Financial Analytics Report", 14, 26);
+
+  doc.setLineWidth(0.5);
+  doc.line(14, 30, 196, 30);
+
+  // Table Headers / Content from Transactions
+  let y = 40;
+  doc.setFontSize(11);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(0);
+  doc.text("Description", 14, y);
+  doc.text("Category", 100, y);
+  doc.text("Amount", 160, y);
+
+  y += 8;
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(10);
+
+  if (transactions.length === 0) {
+    doc.text("No transactions available.", 14, y);
+  } else {
+    transactions.forEach(t => {
+      if (y > 270) { // New page if limit reached
+        doc.addPage();
+        y = 20;
+      }
+
+      let desc = t.description.length > 35 ? t.description.substring(0, 32) + '...' : t.description;
+      let amtText = (t.type === 'income' ? '+' : '-') + t.amount + ' ' + currentCurrency;
+
+      doc.text(desc, 14, y);
+      doc.text(t.category, 100, y);
+      doc.text(amtText, 160, y);
+
+      y += 8;
+    });
+  }
+
+  // Save PDF file (Mobile & PC friendly)
+  doc.save(`finpulse_report_${new Date().toISOString().split('T')[0]}.pdf`);
+  showToast('PDF downloaded successfully!', 'success');
+});
