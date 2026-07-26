@@ -714,3 +714,45 @@ document.getElementById('exportPdfBtn')?.addEventListener('click', () => {
     showToast('Failed to generate PDF.', 'error');
   }
 });
+// --- 1. Reset Demo Modal Functions ---
+function openResetDemoModal() {
+  document.getElementById('resetDemoModal').style.display = 'flex';
+}
+
+function closeResetDemoModal() {
+  document.getElementById('resetDemoModal').style.display = 'none';
+}
+
+function confirmResetDemo() {
+  localStorage.clear();
+  // මෙතැනට ඔයාට ඩිමෝ ඩේටා ලෝඩ් වෙන කෝඩ් එකක් තියෙනවා නම් දාන්න පුළුවන්
+  location.reload();
+}
+
+// --- 2. Clear All Modal Functions ---
+function openClearAllModal() {
+  document.getElementById('clearAllModal').style.display = 'flex';
+}
+
+function closeClearAllModal() {
+  document.getElementById('clearAllModal').style.display = 'none';
+}
+
+function confirmClearAll() {
+  localStorage.clear();
+  location.reload();
+}
+
+// --- 3. Connect Buttons with IDs ---
+document.addEventListener('DOMContentLoaded', () => {
+  const resetDemoBtn = document.getElementById('resetDemoBtn');
+  const clearAllBtn = document.getElementById('clearAllBtn');
+
+  if (resetDemoBtn) {
+    resetDemoBtn.addEventListener('click', openResetDemoModal);
+  }
+
+  if (clearAllBtn) {
+    clearAllBtn.addEventListener('click', openClearAllModal);
+  }
+});
