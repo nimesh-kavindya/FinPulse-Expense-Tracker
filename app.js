@@ -1,4 +1,4 @@
-\/**
+/**
  * FinPulse - Expense Tracker & Visual Analytics
  * Enhanced Core JavaScript Logic (with LKR & USD Currency Converter)
  */
@@ -21,7 +21,7 @@ const CATEGORY_CONFIG = {
   Other: { icon: 'fa-layer-group', color: '#64748b', bg: 'rgba(100, 116, 139, 0.15)' }
 };
 
-// Initial Demo Data (Fallback if storage is completely empty)
+// Initial Demo Data
 const DEMO_TRANSACTIONS = [
   {
     id: 'demo-1',
@@ -109,7 +109,6 @@ const filterCategorySelect = document.getElementById('filterCategory');
 const filterTypeSelect = document.getElementById('filterType');
 
 const clearAllBtn = document.getElementById('clearAllBtn');
-
 const confirmModal = document.getElementById('confirmModal');
 const cancelModalBtn = document.getElementById('cancelModalBtn');
 const confirmModalBtn = document.getElementById('confirmModalBtn');
@@ -117,18 +116,14 @@ const confirmModalBtn = document.getElementById('confirmModalBtn');
 const topExpenseCategoryBadge = document.getElementById('topExpenseCategoryBadge');
 const chartEmptyStateEl = document.getElementById('chartEmptyState');
 const toastContainer = document.getElementById('toastContainer');
-
-// Currency Selector Element
 const currencySelect = document.getElementById('currencySelect');
 
 // Initialize Application
 document.addEventListener('DOMContentLoaded', () => {
-  // Set default date picker to today
   if (dateInput) {
     dateInput.value = getFormattedDate(0);
   }
 
-  // Setup Currency Selector Value & Event
   if (currencySelect) {
     currencySelect.value = currentCurrency;
     updateAmountLabelAndIcon(currentCurrency);
@@ -143,19 +138,11 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Load transactions from localStorage with error handling
   loadTransactions();
-
-  // Populate dynamic month dropdown options
   populateMonthFilter();
-
-  // Initialize Chart.js
   initChart();
-
-  // Initial Full Render Pipeline
   renderApp();
 
-  // Attach Event Listeners
   if (transactionForm) {
     transactionForm.addEventListener('submit', handleAddTransaction);
   }
@@ -164,12 +151,8 @@ document.addEventListener('DOMContentLoaded', () => {
   if (filterCategorySelect) filterCategorySelect.addEventListener('change', renderApp);
   if (filterTypeSelect) filterTypeSelect.addEventListener('change', renderApp);
 
-  // Clear All Modal Button Setup
   if (clearAllBtn) {
-    const newClearAllBtn = clearAllBtn.cloneNode(true);
-    clearAllBtn.parentNode.replaceChild(newClearAllBtn, clearAllBtn);
-
-    newClearAllBtn.addEventListener('click', (e) => {
+    clearAllBtn.addEventListener('click', (e) => {
       e.preventDefault();
       showConfirmModal();
     });
@@ -178,18 +161,14 @@ document.addEventListener('DOMContentLoaded', () => {
   if (cancelModalBtn) {
     cancelModalBtn.addEventListener('click', hideConfirmModal);
   }
-
+  
   if (confirmModalBtn) {
-    const newConfirmBtn = confirmModalBtn.cloneNode(true);
-    confirmModalBtn.parentNode.replaceChild(newConfirmBtn, confirmModalBtn);
-
-    newConfirmBtn.addEventListener('click', () => {
+    confirmModalBtn.addEventListener('click', () => {
       confirmClearAll();
       hideConfirmModal();
     });
   }
 
-  // Close modal when clicking backdrop
   if (confirmModal) {
     confirmModal.addEventListener('click', (e) => {
       if (e.target === confirmModal) hideConfirmModal();
@@ -197,10 +176,8 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 });
 
-// Update Form Amount Label and Icon based on Currency
 function updateAmountLabelAndIcon(currency) {
   if (!amountLabel || !currencySymbolIcon) return;
-
   if (currency === 'USD') {
     amountLabel.textContent = 'Amount (USD)';
     currencySymbolIcon.innerHTML = '<i class="fa-solid fa-dollar-sign"></i>';
@@ -210,7 +187,6 @@ function updateAmountLabelAndIcon(currency) {
   }
 }
 
-// LocalStorage Optimization & Robust Data Validation
 function validateTransaction(t) {
   return t &&
     typeof t === 'object' &&
@@ -234,7 +210,6 @@ function loadTransactions() {
     }
   } catch (err) {
     console.error('LocalStorage read error:', err);
-    showToast('Notice: Restored demo dataset due to storage error.', 'info');
   }
 
   transactions = [...DEMO_TRANSACTIONS];
@@ -246,11 +221,9 @@ function saveTransactions() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(transactions));
   } catch (err) {
     console.error('LocalStorage write error:', err);
-    showToast('Storage Limit Reached: Could not save transaction.', 'danger');
   }
 }
 
-// Dynamic Month Filter Helper Functions
 function getMonthKey(dateStr) {
   if (!dateStr) return '';
   return dateStr.substring(0, 7);
@@ -274,7 +247,6 @@ function populateMonthFilter() {
   });
 
   const sortedMonthKeys = Array.from(monthKeysSet).sort((a, b) => b.localeCompare(a));
-
   filterMonthSelect.innerHTML = '<option value="all">All Months</option>';
 
   sortedMonthKeys.forEach(key => {
@@ -309,7 +281,6 @@ function getFilteredTransactions() {
   });
 }
 
-// Full Application Render Pipeline
 function renderApp() {
   const activeMonth = filterMonthSelect ? filterMonthSelect.value : 'all';
   const monthTransactions = transactions.filter(t => activeMonth === 'all' || getMonthKey(t.date) === activeMonth);
@@ -327,15 +298,11 @@ function renderSummaryCards(monthTransactions) {
 
   monthTransactions.forEach(t => {
     const amt = parseFloat(t.amount) || 0;
-    if (t.type === 'income') {
-      income += amt;
-    } else {
-      expenses += amt;
-    }
+    if (t.type === 'income') income += amt;
+    else expenses += amt;
   });
 
   const balance = income - expenses;
-
   totalBalanceEl.textContent = formatCurrency(balance);
   totalIncomeEl.textContent = formatCurrency(income);
   totalExpensesEl.textContent = formatCurrency(expenses);
@@ -391,7 +358,6 @@ function renderTransactionList(filteredList) {
           </button>
         </div>
       `;
-
       transactionListEl.appendChild(li);
     });
   }
@@ -442,9 +408,7 @@ window.handleDeleteTransaction = function (id, itemEl) {
   const target = transactions.find(t => t.id === id);
   if (!target) return;
 
-  if (itemEl) {
-    itemEl.classList.add('deleting');
-  }
+  if (itemEl) itemEl.classList.add('deleting');
 
   setTimeout(() => {
     transactions = transactions.filter(t => t.id !== id);
@@ -455,7 +419,6 @@ window.handleDeleteTransaction = function (id, itemEl) {
   }, 280);
 };
 
-// --- Modal Controls & Actions ---
 function confirmClearAll() {
   transactions = [];
   saveTransactions();
@@ -554,7 +517,6 @@ function updateChart(monthTransactions) {
   if (categories.length === 0 || totalExpenseVal === 0) {
     chartEmptyStateEl.classList.remove('hidden');
     topExpenseCategoryBadge.textContent = 'Top Category: N/A';
-
     expenseChartInstance.data.labels = [];
     expenseChartInstance.data.datasets[0].data = [];
     expenseChartInstance.data.datasets[0].backgroundColor = [];
@@ -639,136 +601,12 @@ function showToast(message, type = 'info') {
   }, 3200);
 }
 
-// Smooth Loading Screen Dismissal with delay
+// Smooth Loading Screen Dismissal
 window.addEventListener('load', () => {
   const appLoader = document.getElementById('appLoader');
   if (appLoader) {
     setTimeout(() => {
       appLoader.classList.add('fade-out');
-    }, 1200);
-  }
-});
-
-// WebView App Friendly PDF Export (Hidden Iframe Method)
-document.getElementById('exportPdfBtn')?.addEventListener('click', () => {
-  try {
-    let rowsHTML = '';
-    if (transactions.length === 0) {
-      rowsHTML = `<tr><td colspan="4" style="text-align:center; padding: 20px;">No transactions available.</td></tr>`;
-    } else {
-      transactions.forEach(t => {
-        let amtColor = t.type === 'income' ? '#10b981' : '#f43f5e';
-        let amtText = (t.type === 'income' ? '+' : '-') + t.amount + ' ' + currentCurrency;
-        rowsHTML += `
-          <tr style="border-bottom: 1px solid #e2e8f0;">
-            <td style="padding: 10px; color: #1e293b;">${escapeHTML(t.description)}</td>
-            <td style="padding: 10px; color: #64748b;">${t.category}</td>
-            <td style="padding: 10px; color: #64748b;">${t.date}</td>
-            <td style="padding: 10px; text-align: right; font-weight: 600; color: ${amtColor};">${amtText}</td>
-          </tr>
-        `;
-      });
-    }
-
-    const oldIframe = document.getElementById('printIframe');
-    if (oldIframe) oldIframe.remove();
-
-    const iframe = document.createElement('iframe');
-    iframe.id = 'printIframe';
-    iframe.style.position = 'absolute';
-    iframe.style.width = '0px';
-    iframe.style.height = '0px';
-    iframe.style.border = 'none';
-    document.body.appendChild(iframe);
-
-    const doc = iframe.contentWindow.document;
-    doc.open();
-    doc.write(`
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>FinPulse Financial Report</title>
-        <style>
-          body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; padding: 20px; color: #0f172a; }
-          h2 { margin-bottom: 5px; color: #0f172a; }
-          p { color: #64748b; font-size: 14px; margin-top: 0; }
-          table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-          th { background: #f1f5f9; padding: 10px; text-align: left; font-size: 13px; color: #475569; border-bottom: 2px solid #cbd5e1; }
-          th:last-child { text-align: right; }
-        </style>
-      </head>
-      <body>
-        <h2>FinPulse Expenses Tracker</h2>
-        <p>Financial Analytics Report — Generated on ${new Date().toISOString().split('T')[0]}</p>
-        <hr style="border: none; border-top: 1px solid #cbd5e1; margin: 15px 0;">
-        <table>
-          <thead>
-            <tr>
-              <th>Description</th>
-              <th>Category</th>
-              <th>Date</th>
-              <th style="text-align: right;">Amount</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${rowsHTML}
-          </tbody>
-        </table>
-      </body>
-      </html>
-    `);
-    doc.close();
-
-    setTimeout(() => {
-      iframe.contentWindow.focus();
-      iframe.contentWindow.print();
-      showToast('Report generated successfully!', 'success');
-    }, 500);
-
-  } catch (error) {
-    console.error("PDF Export Error:", error);
-    showToast('Failed to generate PDF.', 'error');
-  }
-});
-// Robust Loader Dismissal with Fallback Timeout
-window.addEventListener('load', () => {
-  dismissLoader();
-});
-
-// Fallback: Safety timeout if window load event takes too long or fails
-setTimeout(() => {
-  dismissLoader();
-}, 2000);
-
-function dismissLoader() {
-  const appLoader = document.getElementById('appLoader');
-  if (appLoader && !appLoader.classList.contains('fade-out')) {
-    appLoader.classList.add('fade-out');
-    setTimeout(() => {
-      appLoader.style.display = 'none';
-    }, 500);
-  }
-}
-// Safe Loader Removal Script
-document.addEventListener('DOMContentLoaded', () => {
-  const appLoader = document.getElementById('appLoader');
-  if (appLoader) {
-    setTimeout(() => {
-      appLoader.classList.add('fade-out');
-      setTimeout(() => {
-        appLoader.style.display = 'none';
-      }, 500);
-    }, 300);
-  }
-});
-
-// Fallback just in case
-window.addEventListener('load', () => {
-  const appLoader = document.getElementById('appLoader');
-  if (appLoader) {
-    appLoader.classList.add('fade-out');
-    setTimeout(() => {
-      appLoader.style.display = 'none';
-    }, 500);
+    }, 800);
   }
 });
