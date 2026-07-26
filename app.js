@@ -616,3 +616,12 @@ function showToast(message, type = 'info') {
     });
   }, 3200);
 }
+// Safe Loading Screen Dismissal
+window.addEventListener('load', () => {
+  const appLoader = document.getElementById('appLoader');
+  if (appLoader) {
+    setTimeout(() => {
+      appLoader.classList.add('fade-out');
+    }, 400);
+  }
+});
