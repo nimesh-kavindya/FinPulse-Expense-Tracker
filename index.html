@@ -28,7 +28,7 @@
 
 <body>
 
-<!-- අලුතින් දාන Loading Screen එක (<body> එක ඇතුළේ මුලටම) -->
+  <!-- Loading Screen එක (<body> එක ඇතුළේ මුලටම) -->
   <div id="appLoader" class="app-loader-overlay">
     <div class="loader-content">
       <img src="budget.png" alt="Logo" style="width: 60px; height: 60px; object-fit: contain; margin-bottom: 0.5rem;">
@@ -222,8 +222,13 @@
               <span class="count-badge" id="transactionCount">0 Items</span>
             </div>
 
-            <!-- Filters & Search -->
-            <div class="history-controls">
+            <!-- PDF Export Button & Filters -->
+            <div class="history-controls" style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+              <!-- Export to PDF Button -->
+              <button id="exportPdfBtn" class="btn-export-pdf" title="Export Dashboard to PDF" style="background: #ef4444; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 5px;">
+                <i class="fa-solid fa-file-pdf"></i> PDF
+              </button>
+
               <!-- Search -->
               <div class="search-box">
                 <i class="fa-solid fa-magnifying-glass"></i>

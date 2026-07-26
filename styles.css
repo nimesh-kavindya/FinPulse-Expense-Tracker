@@ -1327,3 +1327,22 @@ body {
   font-size: 0.85rem;
   margin: 0;
 }
+.btn-export-pdf {
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+.btn-export-pdf:hover {
+  opacity: 0.9;
+  transform: translateY(-2px);
+}
+@media print {
+  .app-loader-overlay,
+  .btn-export-pdf,
+  button,
+  .no-print {
+    display: none !important;
+  }
+  body {
+    background: white !important;
+    color: black !important;
+  }
+}

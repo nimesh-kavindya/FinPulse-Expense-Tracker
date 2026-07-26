@@ -625,3 +625,6 @@ window.addEventListener('load', () => {
     }, 1200); // මෙතන අගය වැඩි කළාම ලෝඩින් ස්ක්‍රීන් එක තව ටික වෙලා තියෙලා යන්නේ
   }
 });
+document.getElementById('exportPdfBtn')?.addEventListener('click', () => {
+  window.print();
+});
