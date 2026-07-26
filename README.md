@@ -23,6 +23,8 @@
 
 Try Now - https://nimesh-kavindya.github.io/FinPulse-Expense-Tracker/
 
+Download Here - https://www.mediafire.com/file/8rgygte10d51gok/FinPulse.apk/file
+
 ---
 
 ## 🚀 Getting Started & Local Usage
