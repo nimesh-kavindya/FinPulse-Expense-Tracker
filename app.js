@@ -800,18 +800,3 @@ document.getElementById('importJsonFile')?.addEventListener('change', (event) =>
   };
   reader.readAsText(file);
 });
-// ඔයාගේ app.js එකේ කලින් තියෙන අනෙකුත් කෝඩ් ටික මෙතන තියෙන්න පුළුවන්...
-
-function toggleTheme() {
-  const currentTheme = document.documentElement.getAttribute('data-theme');
-  const newTheme = currentTheme === 'light' ? 'dark' : 'light';
-
-  document.documentElement.setAttribute('data-theme', newTheme);
-  localStorage.setItem('theme', newTheme);
-}
-
-// Page එක ලෝඩ් වෙද්දී කලින් සේව් කරපු තීම් එක ඇක්ටිව් කිරීමට
-window.addEventListener('DOMContentLoaded', () => {
-  const savedTheme = localStorage.getItem('theme') || 'dark';
-  document.documentElement.setAttribute('data-theme', savedTheme);
-});
