@@ -669,6 +669,11 @@ function subscribeToUserTransactions(userId) {
     unsubscribeTransactions();
   }
 
+  // Load from local cache immediately while waiting for Firestore
+  loadLocalTransactionsCache();
+  populateMonthFilter();
+  renderApp();
+
   const txCollectionRef = db.collection('users').doc(userId).collection('transactions');
 
   unsubscribeTransactions = txCollectionRef.onSnapshot(async (snapshot) => {
@@ -678,16 +683,19 @@ function subscribeToUserTransactions(userId) {
       items.push({ id: doc.id, ...data });
     });
 
-    if (items.length === 0 && snapshot.metadata.fromCache === false) {
-      // Seed initial demo data for a brand new account
+    const seedKey = 'finpulse_seeded_' + userId;
+    if (items.length === 0 && snapshot.metadata.fromCache === false && !localStorage.getItem(seedKey)) {
+      // Seed initial demo data for a brand new account only once
       await seedUserDemoTransactions(userId);
       return;
     }
 
-    transactions = items.filter(validateTransaction);
-    saveLocalTransactionsCache();
-    populateMonthFilter();
-    renderApp();
+    if (items.length > 0 || snapshot.metadata.fromCache === false) {
+      transactions = items.filter(validateTransaction);
+      saveLocalTransactionsCache();
+      populateMonthFilter();
+      renderApp();
+    }
   }, (error) => {
     console.error('Firestore snapshot listener error:', error);
     loadLocalTransactionsCache();
@@ -699,13 +707,26 @@ function subscribeToUserTransactions(userId) {
 // Seed Demo Transactions for new users
 async function seedUserDemoTransactions(userId) {
   if (!db) return;
+  const seedKey = 'finpulse_seeded_' + userId;
+  if (localStorage.getItem(seedKey)) return;
+
   try {
+    const userDocRef = db.collection('users').doc(userId);
+    const userDoc = await userDocRef.get();
+
+    if (userDoc.exists && userDoc.data().seededDemo) {
+      localStorage.setItem(seedKey, 'true');
+      return;
+    }
+
     const batch = db.batch();
     DEMO_TRANSACTIONS.forEach(t => {
-      const docRef = db.collection('users').doc(userId).collection('transactions').doc(t.id);
+      const docRef = userDocRef.collection('transactions').doc(t.id);
       batch.set(docRef, t);
     });
+    batch.set(userDocRef, { seededDemo: true, updatedAt: new Date().toISOString() }, { merge: true });
     await batch.commit();
+    localStorage.setItem(seedKey, 'true');
   } catch (err) {
     console.error('Error seeding demo data:', err);
   }
@@ -927,24 +948,28 @@ async function handleAddTransaction(e) {
     createdAt: new Date().toISOString()
   };
 
-  if (currentUser && db) {
-    try {
-      await db.collection('users').doc(currentUser.uid).collection('transactions').doc(newTransaction.id).set(newTransaction);
-    } catch (err) {
-      console.error('Firestore save error:', err);
-      showToast('Error syncing transaction to cloud.', 'danger');
-    }
-  } else {
-    transactions.unshift(newTransaction);
-    saveLocalTransactionsCache();
-    populateMonthFilter();
-    renderApp();
-  }
+  // 1. Instantly update local state & cache for instant UI responsiveness
+  transactions.unshift(newTransaction);
+  saveLocalTransactionsCache();
+  populateMonthFilter();
+  renderApp();
 
+  // Reset form inputs immediately
   descriptionInput.value = '';
   amountInput.value = '';
   dateInput.value = getFormattedDate(0);
   descriptionInput.focus();
+
+  // 2. Persist to Firestore under current user collection
+  if (currentUser && db) {
+    try {
+      await db.collection('users').doc(currentUser.uid).collection('transactions').doc(newTransaction.id).set(newTransaction);
+      console.log('[Firestore] Successfully persisted transaction:', newTransaction.id);
+    } catch (err) {
+      console.error('[Firestore] Save error:', err);
+      showToast('Saved locally (cloud sync offline).', 'warning');
+    }
+  }
 
   // Check Category Monthly Spending Limit for Expenses
   if (type === 'expense') {
@@ -952,12 +977,9 @@ async function handleAddTransaction(e) {
     const budgets = getCategoryBudgets();
     const limitLKR = budgets[category] || DEFAULT_CATEGORY_BUDGETS[category] || 30000;
 
-    const existingTotalLKR = transactions
+    const currentCategoryTotalLKR = transactions
       .filter(t => t.type === 'expense' && t.category === category && getMonthKey(t.date) === txMonthKey)
       .reduce((sum, t) => sum + (parseFloat(t.amount) || 0), 0);
-
-    // If new transaction was added via firestore sync, transactions may already contain it; if local mode, we unshifted it above
-    const currentCategoryTotalLKR = existingTotalLKR;
 
     if (currentCategoryTotalLKR > limitLKR) {
       const exceededLKR = currentCategoryTotalLKR - limitLKR;
@@ -965,7 +987,6 @@ async function handleAddTransaction(e) {
 
       showToast(alertMsg, 'danger');
 
-      // Trigger Web Desktop Notification if enabled
       if ('Notification' in window && Notification.permission === 'granted') {
         try {
           new Notification('FinPulse Category Limit Exceeded', {
@@ -991,24 +1012,30 @@ window.handleDeleteTransaction = async function (id, itemEl) {
   if (itemEl) itemEl.classList.add('deleting');
 
   setTimeout(async () => {
+    // Instantly remove locally
+    transactions = transactions.filter(t => t.id !== id);
+    saveLocalTransactionsCache();
+    populateMonthFilter();
+    renderApp();
+
     if (currentUser && db) {
       try {
         await db.collection('users').doc(currentUser.uid).collection('transactions').doc(id).delete();
+        console.log('[Firestore] Deleted transaction:', id);
       } catch (err) {
-        console.error('Firestore delete error:', err);
-        showToast('Error deleting transaction from cloud.', 'danger');
+        console.error('[Firestore] Delete error:', err);
       }
-    } else {
-      transactions = transactions.filter(t => t.id !== id);
-      saveLocalTransactionsCache();
-      populateMonthFilter();
-      renderApp();
     }
     showToast(`Removed "${target.description}"`, 'info');
   }, 280);
 };
 
 async function confirmClearAll() {
+  transactions = [];
+  saveLocalTransactionsCache();
+  populateMonthFilter();
+  renderApp();
+
   if (currentUser && db) {
     try {
       const userTxsRef = db.collection('users').doc(currentUser.uid).collection('transactions');
@@ -1016,15 +1043,12 @@ async function confirmClearAll() {
       const batch = db.batch();
       snapshot.forEach(doc => batch.delete(doc.ref));
       await batch.commit();
+      console.log('[Firestore] Cleared all user transactions.');
     } catch (err) {
-      console.error('Firestore clear all error:', err);
+      console.error('[Firestore] Clear all error:', err);
     }
   }
 
-  transactions = [];
-  saveLocalTransactionsCache();
-  populateMonthFilter();
-  renderApp();
   showToast('All transaction records cleared.', 'danger');
 }
 
