@@ -1579,109 +1579,283 @@ function showToast(message, type = 'info') {
   }, 3200);
 }
 
-// PDF Export
-document.getElementById('exportPdfBtn')?.addEventListener('click', () => {
+// PDF Export using jsPDF & jspdf-autotable
+document.getElementById('exportPdfBtn')?.addEventListener('click', generatePdfReport);
+
+function generatePdfReport() {
   try {
     const { jsPDF } = window.jspdf;
     if (!jsPDF) {
-      showToast('PDF Library not loaded. Check internet connection.', 'danger');
+      showToast('PDF library not loaded. Please check your network connection.', 'danger');
       return;
     }
 
-    const doc = new jsPDF();
+    const doc = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: 'a4'
+    });
 
+    const pageWidth = doc.internal.pageSize.getWidth(); // 210mm
+    const pageHeight = doc.internal.pageSize.getHeight(); // 297mm
+    const margin = 14;
+
+    // Active transactions list (uses month filter if applied)
+    const activeTx = (typeof getFilteredTransactions === 'function') ? getFilteredTransactions() : transactions;
+
+    // Financial totals calculation
     let totalIncome = 0;
     let totalExpenses = 0;
-    transactions.forEach(t => {
+    activeTx.forEach(t => {
       const amt = parseFloat(t.amount) || 0;
       if (t.type === 'income') totalIncome += amt;
       else totalExpenses += amt;
     });
     const totalBalance = totalIncome - totalExpenses;
 
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(18);
-    doc.setTextColor(15, 23, 42);
-    doc.text("FinPulse Financial Report", 14, 18);
+    const curr = (typeof currentCurrency !== 'undefined') ? currentCurrency : 'LKR';
+    const currSymbol = curr === 'USD' ? '$' : 'Rs. ';
 
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(10);
-    doc.setTextColor(100, 116, 139);
-    doc.text(`Generated: ${new Date().toISOString().split('T')[0]} | Currency: ${currentCurrency}`, 14, 25);
+    // Currency formatting helper
+    const formatCurr = (num) => {
+      return `${currSymbol}${Math.abs(num).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${curr}`;
+    };
 
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(11);
-    doc.setTextColor(30, 41, 59);
-    doc.text("Financial Summary", 14, 35);
-
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(10);
-    doc.setTextColor(71, 85, 105);
-    doc.text(`Total Balance: ${totalBalance.toLocaleString()} ${currentCurrency}`, 14, 43);
-    doc.text(`Total Income: ${totalIncome.toLocaleString()} ${currentCurrency}`, 14, 50);
-    doc.text(`Total Expenses: ${totalExpenses.toLocaleString()} ${currentCurrency}`, 14, 57);
-
-    doc.setDrawColor(203, 213, 225);
-    doc.setLineWidth(0.5);
-    doc.line(14, 63, 196, 63);
-
-    let startY = 71;
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(10);
-    doc.setTextColor(71, 85, 105);
-    doc.text("Description", 14, startY);
-    doc.text("Category", 90, startY);
-    doc.text("Date", 130, startY);
-    doc.text("Amount", 170, startY, { align: 'right' });
-
-    startY += 4;
-    doc.line(14, startY, 196, startY);
-    startY += 8;
-
-    if (transactions.length === 0) {
-      doc.setFont("helvetica", "italic");
-      doc.setFontSize(10);
-      doc.setTextColor(100, 116, 139);
-      doc.text("No transactions available.", 14, startY);
+    // User details string
+    let userEmailStr = 'Guest User (Local Mode)';
+    if (typeof currentUser !== 'undefined' && currentUser) {
+      userEmailStr = currentUser.displayName || currentUser.email || 'Registered User';
     } else {
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(10);
-
-      transactions.forEach((t) => {
-        if (startY > 275) {
-          doc.addPage();
-          startY = 20;
-        }
-
-        const isIncome = t.type === 'income';
-        const amtPrefix = isIncome ? '+' : '-';
-        const amountStr = `${amtPrefix} ${t.amount.toLocaleString()} ${currentCurrency}`;
-
-        doc.setTextColor(30, 41, 59);
-        doc.text(t.description.substring(0, 35), 14, startY);
-        doc.text(t.category, 90, startY);
-        doc.text(t.date, 130, startY);
-
-        if (isIncome) {
-          doc.setTextColor(16, 185, 129);
-        } else {
-          doc.setTextColor(244, 63, 94);
-        }
-        doc.text(amountStr, 170, startY, { align: 'right' });
-
-        startY += 8;
-        doc.setDrawColor(241, 245, 249);
-        doc.line(14, startY - 2, 196, startY - 2);
-      });
+      const userEmailEl = document.getElementById('userEmailText');
+      if (userEmailEl && userEmailEl.textContent) {
+        userEmailStr = userEmailEl.textContent.trim();
+      }
     }
 
-    doc.save(`FinPulse-Report-${new Date().toISOString().split('T')[0]}.pdf`);
-    showToast('PDF downloaded successfully!', 'success');
+    const reportDateStr = new Date().toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+
+    // ==========================================
+    // 1. HEADER SECTION (Executive Banner)
+    // ==========================================
+    // Slate Top Banner (#1e293b)
+    doc.setFillColor(30, 41, 59);
+    doc.rect(0, 0, pageWidth, 32, 'F');
+
+    // Bottom Indigo Accent Line (#4f46e5)
+    doc.setFillColor(79, 70, 229);
+    doc.rect(0, 31, pageWidth, 1.5, 'F');
+
+    // Title & Subtitle inside Banner
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(17);
+    doc.setTextColor(255, 255, 255);
+    doc.text('FinPulse Financial Report', margin, 14);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.setTextColor(203, 213, 225);
+    doc.text('Executive Personal Expense & Financial Statement', margin, 21);
+
+    // Right-aligned Metadata
+    doc.setFontSize(8.5);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(226, 232, 240);
+    doc.text(`User: ${userEmailStr}`, pageWidth - margin, 12, { align: 'right' });
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(148, 163, 184);
+    doc.text(`Generated: ${reportDateStr}`, pageWidth - margin, 18, { align: 'right' });
+    doc.text(`Base Currency: ${curr}`, pageWidth - margin, 24, { align: 'right' });
+
+    // ==========================================
+    // 2. SUMMARY CARDS / OVERVIEW SECTION
+    // ==========================================
+    const startY = 38;
+    const cardGap = 4;
+    const availableWidth = pageWidth - (margin * 2);
+    const cardWidth = (availableWidth - (cardGap * 2)) / 3;
+    const cardHeight = 22;
+
+    // Card 1: Total Balance
+    drawMetricCard(
+      doc, 
+      margin, 
+      startY, 
+      cardWidth, 
+      cardHeight, 
+      'TOTAL BALANCE', 
+      (totalBalance >= 0 ? '' : '-') + formatCurr(totalBalance), 
+      totalBalance >= 0 ? [16, 185, 129] : [239, 68, 68], 
+      [248, 250, 252], 
+      [226, 232, 240]
+    );
+
+    // Card 2: Total Income
+    drawMetricCard(
+      doc, 
+      margin + cardWidth + cardGap, 
+      startY, 
+      cardWidth, 
+      cardHeight, 
+      'TOTAL INCOME', 
+      '+' + formatCurr(totalIncome), 
+      [5, 150, 105], 
+      [240, 253, 244], 
+      [187, 247, 208]
+    );
+
+    // Card 3: Total Expenses
+    drawMetricCard(
+      doc, 
+      margin + (cardWidth + cardGap) * 2, 
+      startY, 
+      cardWidth, 
+      cardHeight, 
+      'TOTAL EXPENSES', 
+      '-' + formatCurr(totalExpenses), 
+      [220, 38, 38], 
+      [254, 242, 242], 
+      [254, 202, 202]
+    );
+
+    // ==========================================
+    // 3. TRANSACTIONS TABLE (jspdf-autotable)
+    // ==========================================
+    const tableStartY = startY + cardHeight + 10;
+
+    // Section Heading
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.setTextColor(30, 41, 59);
+    doc.text(`Transactions Ledger (${activeTx.length} Record${activeTx.length === 1 ? '' : 's'})`, margin, tableStartY - 3);
+
+    // Table Columns & Rows setup
+    const tableColumns = [
+      { header: 'Date', dataKey: 'date' },
+      { header: 'Description', dataKey: 'description' },
+      { header: 'Category', dataKey: 'category' },
+      { header: 'Type', dataKey: 'type' },
+      { header: 'Amount', dataKey: 'amount' }
+    ];
+
+    const tableRows = activeTx.map(t => {
+      const amtNum = parseFloat(t.amount) || 0;
+      const isIncome = t.type === 'income';
+      const formattedAmt = `${isIncome ? '+' : '-'}${currSymbol}${amtNum.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${curr}`;
+      
+      return {
+        date: t.date || 'N/A',
+        description: t.description || 'Uncategorized',
+        category: t.category || 'General',
+        type: isIncome ? 'INCOME' : 'EXPENSE',
+        amount: formattedAmt,
+        rawType: t.type
+      };
+    });
+
+    const tableOptions = {
+      columns: tableColumns,
+      body: tableRows,
+      startY: tableStartY,
+      margin: { left: margin, right: margin, bottom: 20 },
+      theme: 'grid',
+      headStyles: {
+        fillColor: [49, 46, 129],
+        textColor: [255, 255, 255],
+        fontStyle: 'bold',
+        fontSize: 9,
+        halign: 'left',
+        cellPadding: 3.5
+      },
+      bodyStyles: {
+        textColor: [30, 41, 59],
+        fontSize: 8.5,
+        cellPadding: 3,
+        lineColor: [241, 245, 249]
+      },
+      alternateRowStyles: {
+        fillColor: [248, 250, 252]
+      },
+      columnStyles: {
+        date: { cellWidth: 26, halign: 'left' },
+        description: { cellWidth: 'auto', halign: 'left' },
+        category: { cellWidth: 32, halign: 'left' },
+        type: { cellWidth: 25, halign: 'center' },
+        amount: { cellWidth: 42, halign: 'right', fontStyle: 'bold' }
+      },
+      didParseCell: function (data) {
+        if (data.section === 'body') {
+          const rowData = tableRows[data.row.index];
+          if (rowData) {
+            const isIncome = rowData.rawType === 'income';
+            if (data.column.dataKey === 'type') {
+              data.cell.styles.textColor = isIncome ? [4, 120, 87] : [185, 28, 28];
+              data.cell.styles.fontStyle = 'bold';
+            }
+            if (data.column.dataKey === 'amount') {
+              data.cell.styles.textColor = isIncome ? [5, 150, 105] : [220, 38, 38];
+            }
+          }
+        }
+      },
+      didDrawPage: function (data) {
+        const totalPages = doc.getNumberOfPages ? doc.getNumberOfPages() : (doc.internal ? doc.internal.getNumberOfPages() : 1);
+        const currentPage = data.pageNumber;
+
+        doc.setDrawColor(226, 232, 240);
+        doc.setLineWidth(0.4);
+        doc.line(margin, pageHeight - 12, pageWidth - margin, pageHeight - 12);
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(8);
+        doc.setTextColor(148, 163, 184);
+        doc.text('FinPulse Financial Report • Confidential', margin, pageHeight - 6);
+
+        doc.text(`Page ${currentPage} of ${totalPages}`, pageWidth - margin, pageHeight - 6, { align: 'right' });
+      }
+    };
+
+    if (typeof doc.autoTable === 'function') {
+      doc.autoTable(tableOptions);
+    } else if (typeof window.autoTable === 'function') {
+      window.autoTable(doc, tableOptions);
+    } else if (window.jspdf && typeof window.jspdf.autoTable === 'function') {
+      window.jspdf.autoTable(doc, tableOptions);
+    } else {
+      throw new Error('autoTable plugin is not initialized.');
+    }
+
+    doc.save(`FinPulse-Financial-Report-${new Date().toISOString().substring(0, 10)}.pdf`);
+    showToast('PDF Financial Report generated successfully!', 'success');
+
   } catch (error) {
-    console.error("jsPDF Error:", error);
-    showToast('Failed to generate PDF file.', 'danger');
+    console.error('jsPDF / jspdf-autotable Error:', error);
+    showToast('Failed to generate PDF report: ' + (error.message || 'Unknown error'), 'danger');
   }
-});
+}
+
+// Helper function to draw metric card boxes in PDF
+function drawMetricCard(doc, x, y, width, height, title, valueStr, valueColor, bgColor, borderColor) {
+  doc.setFillColor(...bgColor);
+  doc.setDrawColor(...borderColor);
+  doc.setLineWidth(0.3);
+  doc.roundedRect(x, y, width, height, 2, 2, 'FD');
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7.5);
+  doc.setTextColor(100, 116, 139);
+  doc.text(title, x + 3.5, y + 6);
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10);
+  doc.setTextColor(...valueColor);
+  doc.text(valueStr, x + 3.5, y + 15);
+}
 
 // JSON Export Backup Handler
 function handleExportJson() {
