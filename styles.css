@@ -1564,3 +1564,25 @@ body {
 .restore-label i {
   color: var(--success);
 }
+
+/* ඔයාගේ අනිත් කෝඩ් ටික මෙතන තියෙන්න පුළුවන්... */
+
+/* ඩිෆෝල්ට් Dark Theme එක */
+:root {
+  --bg-color: #121212;
+  --text-color: #ffffff;
+  --card-bg: #1e1e1e;
+}
+
+/* Light Theme එක සඳහා */
+[data-theme="light"] {
+  --bg-color: #f4f4f4;
+  --text-color: #333333;
+  --card-bg: #ffffff;
+}
+
+body {
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  transition: background 0.3s ease, color 0.3s ease;
+}
