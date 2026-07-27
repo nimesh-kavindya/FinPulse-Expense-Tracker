@@ -331,41 +331,80 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Initialize Firebase SDK
 async function initFirebase() {
+  const DEFAULT_FIREBASE_CONFIG = {
+    projectId: "finpulse-ecdb3",
+    appId: "1:220436316919:web:1ff6674e3d74da92da89f2",
+    apiKey: "AIzaSyD4dRmhMa5wCFBTnaCyhrJ2-uHh7KwfWSY",
+    authDomain: "finpulse-ecdb3.firebaseapp.com",
+    storageBucket: "finpulse-ecdb3.firebasestorage.app",
+    messagingSenderId: "220436316919",
+    measurementId: "G-HC34LT9GMF"
+  };
+
+  let firebaseConfig = DEFAULT_FIREBASE_CONFIG;
+
   try {
-    const configRes = await fetch('/firebase-applet-config.json');
-    if (!configRes.ok) {
-      throw new Error('Failed to load firebase-applet-config.json');
+    const configRes = await fetch('./firebase-applet-config.json');
+    if (configRes.ok) {
+      const text = await configRes.text();
+      if (text && text.trim().startsWith('{')) {
+        firebaseConfig = JSON.parse(text);
+      }
     }
-    const firebaseConfig = await configRes.json();
+  } catch (err) {
+    console.warn('Could not fetch firebase-applet-config.json, using fallback config:', err);
+  }
 
-    if (!window.firebase || !window.firebase.apps.length) {
-      window.firebase.initializeApp(firebaseConfig);
-    }
+  try {
+    if (window.firebase) {
+      let firebaseApp;
+      if (!window.firebase.apps || !window.firebase.apps.length) {
+        firebaseApp = window.firebase.initializeApp(firebaseConfig);
+      } else {
+        firebaseApp = window.firebase.app();
+      }
 
-    auth = window.firebase.auth();
-    db = window.firebase.firestore();
+      // Initialize Auth using app instance
+      if (typeof window.firebase.auth === 'function') {
+        auth = window.firebase.auth(firebaseApp);
+      } else if (typeof window.getAuth === 'function') {
+        auth = window.getAuth(firebaseApp);
+      } else {
+        auth = window.firebase.auth ? window.firebase.auth() : null;
+      }
 
-    if (window.firebase.analytics && firebaseConfig.measurementId) {
-      try {
-        window.firebase.analytics();
-      } catch (e) {
-        console.warn('Analytics initialization skipped:', e);
+      // Initialize Firestore using app instance
+      if (typeof window.firebase.firestore === 'function') {
+        db = window.firebase.firestore(firebaseApp);
+      } else if (typeof window.getFirestore === 'function') {
+        db = window.getFirestore(firebaseApp);
+      } else {
+        db = window.firebase.firestore ? window.firebase.firestore() : null;
+      }
+
+      if (window.firebase.analytics && firebaseConfig.measurementId) {
+        try {
+          window.firebase.analytics(firebaseApp);
+        } catch (e) {
+          console.warn('Analytics initialization skipped:', e);
+        }
       }
     }
 
     // Attach auth handlers immediately so onAuthStateChanged fires without delay
     setupAuthHandlers();
 
-    // Non-blocking connection test in background
-    db.collection('test').doc('connection').get({ source: 'server' }).catch((err) => {
-      if (err instanceof Error && err.message.includes('the client is offline')) {
-        console.warn('Firebase connection test: client is offline');
-      }
-    });
+    if (db) {
+      // Non-blocking connection test in background
+      db.collection('test').doc('connection').get({ source: 'server' }).catch((err) => {
+        if (err instanceof Error && err.message.includes('the client is offline')) {
+          console.warn('Firebase connection test: client is offline');
+        }
+      });
+    }
   } catch (err) {
     console.error('Firebase Initialization Error:', err);
-    showToast('Failed to initialize Firebase Auth', 'danger');
-    hideAppLoader();
+    setupAuthHandlers();
   }
 }
 
@@ -577,34 +616,49 @@ function setupAuthHandlers() {
   }
 
   // Auth State Changed Observer
-  auth.onAuthStateChanged((user) => {
+  if (auth && typeof auth.onAuthStateChanged === 'function') {
+    auth.onAuthStateChanged((user) => {
+      hideAppLoader();
+
+      if (user) {
+        currentUser = user;
+        if (authScreen) authScreen.classList.add('hidden');
+        if (appContainer) appContainer.classList.remove('hidden');
+
+        if (userEmailText) {
+          userEmailText.textContent = user.displayName || user.email;
+        }
+
+        // Sync user transactions from Firestore
+        subscribeToUserTransactions(user.uid);
+      } else {
+        currentUser = null;
+        if (unsubscribeTransactions) {
+          unsubscribeTransactions();
+          unsubscribeTransactions = null;
+        }
+
+        if (authScreen) authScreen.classList.remove('hidden');
+        if (appContainer) appContainer.classList.add('hidden');
+
+        transactions = [];
+        renderApp();
+      }
+    });
+  } else {
+    console.warn('Firebase Auth instance not active. Fallback to Guest Mode.');
     hideAppLoader();
-
-    if (user) {
-      currentUser = user;
-      if (authScreen) authScreen.classList.add('hidden');
-      if (appContainer) appContainer.classList.remove('hidden');
-
-      if (userEmailText) {
-        userEmailText.textContent = user.displayName || user.email;
-      }
-
-      // Sync user transactions from Firestore
-      subscribeToUserTransactions(user.uid);
-    } else {
-      currentUser = null;
-      if (unsubscribeTransactions) {
-        unsubscribeTransactions();
-        unsubscribeTransactions = null;
-      }
-
-      if (authScreen) authScreen.classList.remove('hidden');
-      if (appContainer) appContainer.classList.add('hidden');
-
-      transactions = [];
-      renderApp();
+    if (authScreen) authScreen.classList.add('hidden');
+    if (appContainer) appContainer.classList.remove('hidden');
+    if (userEmailText) userEmailText.textContent = 'Guest User (Local)';
+    loadLocalTransactionsCache();
+    if (transactions.length === 0) {
+      transactions = [...DEMO_TRANSACTIONS];
+      saveLocalTransactionsCache();
     }
-  });
+    populateMonthFilter();
+    renderApp();
+  }
 }
 
 // Firestore Realtime Subscription for User Transactions
