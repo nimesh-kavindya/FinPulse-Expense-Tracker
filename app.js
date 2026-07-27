@@ -5,7 +5,7 @@
  */
 
 // App Version Configuration for Update Notifications
-const CURRENT_APP_VERSION = '1.0.1';
+const CURRENT_APP_VERSION = '1.0.2';
 
 // Local Storage Keys
 const STORAGE_KEY = 'finpulse_transactions_v1';
@@ -1841,6 +1841,7 @@ function handleSaveBudgets(e) {
    ========================================================================== */
 let swRegistration = null;
 let swWaitingWorker = null;
+let currentBannerVersion = '1.0.2';
 
 /**
  * Registers the PWA Service Worker and listens for update lifecycle events.
@@ -1921,7 +1922,10 @@ async function checkAppVersion(isManualCheck = false) {
   try {
     const res = await fetch(`./version.json?t=${Date.now()}`, { cache: 'no-store' });
     if (!res.ok) {
-      if (isManualCheck) showToast(`Running FinPulse v${CURRENT_APP_VERSION}`, 'info');
+      if (isManualCheck) {
+        showUpdateBanner(CURRENT_APP_VERSION, `FinPulse v${CURRENT_APP_VERSION} is active.`, true);
+        showToast(`Running FinPulse v${CURRENT_APP_VERSION}`, 'info');
+      }
       return;
     }
 
@@ -1935,12 +1939,13 @@ async function checkAppVersion(isManualCheck = false) {
     }
 
     if (isNewerVersion(latestVersion, CURRENT_APP_VERSION)) {
-      showUpdateBanner(latestVersion, releaseNotes);
+      showUpdateBanner(latestVersion, releaseNotes, isManualCheck);
       if (isManualCheck) {
         showToast(`🚀 New update v${latestVersion} available!`, 'success');
       }
     } else {
       if (isManualCheck) {
+        showUpdateBanner(latestVersion, releaseNotes, true);
         showToast(`FinPulse is up to date (v${CURRENT_APP_VERSION})!`, 'success');
       }
     }
@@ -1953,24 +1958,43 @@ async function checkAppVersion(isManualCheck = false) {
 }
 
 /**
- * Displays the glassmorphism Update Banner
+ * Displays the glassmorphism Update Banner unless dismissed for this version (or if forceShow is true)
+ * @param {string} version - Version string (e.g. "1.0.2")
+ * @param {string} notes - Release notes or description
+ * @param {boolean} forceShow - If true (e.g. user manually clicked version badge), bypasses dismissed flag check
  */
-function showUpdateBanner(version, notes) {
+function showUpdateBanner(version, notes, forceShow = false) {
+  const rawVer = version ? version.toString().replace(/^v/i, '') : '1.0.2';
+  currentBannerVersion = rawVer;
+
+  const dismissedVer = localStorage.getItem('dismissedVersion') || localStorage.getItem('finpulse_dismissed_version');
+
+  // Check if notification was dismissed for this version and forceShow is not set
+  if (!forceShow && dismissedVer === rawVer) {
+    console.log(`[PWA] Update banner for v${rawVer} was previously dismissed by user.`);
+    return;
+  }
+
   const banner = document.getElementById('updateBanner');
   const verText = document.getElementById('latestVersionText');
   const notesText = document.getElementById('updateBannerNotes');
 
-  if (verText) verText.innerText = version.startsWith('v') ? version : `v${version}`;
+  if (verText) verText.innerText = `v${rawVer}`;
   if (notesText && notes) notesText.innerText = notes;
   if (banner) banner.classList.remove('hidden');
 }
 
 /**
- * Dismisses the Update Banner
+ * Dismisses the Update Banner and stores the dismissedVersion flag in localStorage
  */
 function dismissUpdateBanner() {
   const banner = document.getElementById('updateBanner');
   if (banner) banner.classList.add('hidden');
+
+  const rawVer = currentBannerVersion ? currentBannerVersion.replace(/^v/i, '') : '1.0.2';
+  localStorage.setItem('dismissedVersion', rawVer);
+  localStorage.setItem('finpulse_dismissed_version', rawVer);
+  console.log(`[PWA] User dismissed update notification for v${rawVer}. Flag saved in localStorage.`);
 }
 
 /**
