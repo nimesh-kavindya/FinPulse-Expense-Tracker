@@ -9,6 +9,7 @@ const assetsToCache = [
 // Install Service Worker and cache static assets
 self.addEventListener('install', (e) => {
   console.log('FinPulse Service Worker Installed');
+  self.skipWaiting(); // අලුත් වර්ෂන් එක ආපු ගමන් පරණ එක උ버ර්ඩ්රයිව් කරලා ඉන්ස්ටෝල් වෙන්න
   e.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       return cache.addAll(assetsToCache);
@@ -38,6 +39,8 @@ self.addEventListener('activate', (e) => {
           }
         })
       );
+    }).then(() => {
+      return self.clients.claim(); // පරණ ටැබ්ස් වලත් අලුත් කෝඩ් එක එකපාර ක්‍රියාත්මක කරන්න
     })
   );
 });
