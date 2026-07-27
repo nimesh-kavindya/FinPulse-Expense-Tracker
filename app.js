@@ -448,6 +448,13 @@ function setupAuthHandlers() {
         const noticeText = document.getElementById('authNoticeText');
         if (noticeText) noticeText.innerHTML = 'Google Sign-In is disabled in your Firebase console under <strong>Authentication &gt; Sign-in method</strong>. Click below to enter as Guest:';
         if (authNotice) authNotice.classList.remove('hidden');
+      } else if (err.code === 'auth/unauthorized-domain') {
+        const domain = window.location.hostname;
+        msg = `Domain (${domain}) is not authorized for OAuth in your Firebase project. Add "${domain}" under Firebase Console > Authentication > Settings > Authorized domains.`;
+        const authNotice = document.getElementById('authNotice');
+        const noticeText = document.getElementById('authNoticeText');
+        if (noticeText) noticeText.innerHTML = `Domain <code>${domain}</code> is not authorized in your Firebase project. Go to <strong>Firebase Console &gt; Authentication &gt; Settings &gt; Authorized domains</strong> and add <code>${domain}</code> (or <code>run.app</code>), or click below to enter as Guest:`;
+        if (authNotice) authNotice.classList.remove('hidden');
       } else if (err.code === 'auth/popup-closed-by-user') {
         msg = 'Google sign-in popup was closed before completion.';
       }
@@ -485,6 +492,14 @@ function setupAuthHandlers() {
       }
     }).catch((err) => {
       console.error('Redirect sign-in error:', err);
+      if (err.code === 'auth/unauthorized-domain') {
+        const domain = window.location.hostname;
+        const authNotice = document.getElementById('authNotice');
+        const noticeText = document.getElementById('authNoticeText');
+        if (noticeText) noticeText.innerHTML = `Domain <code>${domain}</code> is not authorized in your Firebase project. Go to <strong>Firebase Console &gt; Authentication &gt; Settings &gt; Authorized domains</strong> and add <code>${domain}</code> (or <code>run.app</code>), or click below to enter as Guest:`;
+        if (authNotice) authNotice.classList.remove('hidden');
+        showToast(`Domain (${domain}) is not authorized for OAuth in Firebase.`, 'danger');
+      }
     });
   }
 
