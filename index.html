@@ -227,6 +227,18 @@
               <span class="count-badge" id="transactionCount">0 Items</span>
             </div>
 
+            <!-- Backup & Restore Buttons (PDF එකට උඩින්) -->
+            <div class="backup-restore-container"
+              style="margin-bottom: 12px; display: flex; gap: 12px; flex-wrap: wrap;">
+              <button id="exportJsonBtn" type="button" class="backup-btn">
+                <i class="fa-solid fa-download"></i> Backup JSON
+              </button>
+
+              <label for="importJsonFile" class="restore-label">
+                <i class="fa-solid fa-upload"></i> Restore JSON
+              </label>
+              <input type="file" id="importJsonFile" accept=".json" style="display: none;">
+            </div>
             <!-- PDF Export Button & Filters -->
             <div class="history-controls" style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
               <!-- Export to PDF Button -->

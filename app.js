@@ -736,3 +736,67 @@ document.getElementById('exportPdfBtn')?.addEventListener('click', () => {
     showToast('Failed to generate PDF file.', 'danger');
   }
 });
+// --- Data Backup (Export JSON) ---
+document.getElementById('exportJsonBtn')?.addEventListener('click', () => {
+  try {
+    const dataStr = localStorage.getItem(STORAGE_KEY);
+    if (!dataStr || JSON.parse(dataStr).length === 0) {
+      showToast('No transactions available to backup.', 'danger');
+      return;
+    }
+
+    const blob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const downloadAnchor = document.createElement('a');
+
+    downloadAnchor.href = url;
+    downloadAnchor.download = `FinPulse-Backup-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(downloadAnchor);
+    downloadAnchor.click();
+    document.body.removeChild(downloadAnchor);
+    URL.revokeObjectURL(url);
+
+    showToast('Backup downloaded successfully!', 'success');
+  } catch (error) {
+    console.error('Export error:', error);
+    showToast('Failed to generate backup file.', 'danger');
+  }
+});
+
+// --- Data Restore (Import JSON) ---
+document.getElementById('importJsonFile')?.addEventListener('change', (event) => {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = function (e) {
+    try {
+      const parsedData = JSON.parse(e.target.result);
+
+      if (!Array.isArray(parsedData)) {
+        throw new Error('Invalid JSON format');
+      }
+
+      // Validating imported items using existing validateTransaction function
+      const validTransactions = parsedData.filter(validateTransaction);
+
+      if (validTransactions.length === 0) {
+        showToast('No valid transaction records found in file.', 'danger');
+        return;
+      }
+
+      transactions = validTransactions;
+      saveTransactions();
+      populateMonthFilter();
+      renderApp();
+
+      showToast(`Successfully restored ${validTransactions.length} records!`, 'success');
+    } catch (error) {
+      console.error('Import error:', error);
+      showToast('Invalid backup file format.', 'danger');
+    } finally {
+      event.target.value = ''; // Reset file input
+    }
+  };
+  reader.readAsText(file);
+});
