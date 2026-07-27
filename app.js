@@ -201,6 +201,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
   authScreen = document.getElementById('authScreen');
   appContainer = document.getElementById('appContainer');
+  loginForm = document.getElementById('loginForm');
+  signupForm = document.getElementById('signupForm');
+  tabLoginBtn = document.getElementById('tabLoginBtn');
+  tabSignupBtn = document.getElementById('tabSignupBtn');
 
   userEmailText = document.getElementById('userEmailText');
   logoutBtn = document.getElementById('logoutBtn');
@@ -240,6 +244,25 @@ document.addEventListener('DOMContentLoaded', () => {
       updateAmountLabelAndIcon(currentCurrency);
       renderApp();
       showToast(`Currency changed to ${currentCurrency}`, 'info');
+    });
+  }
+
+  // Setup Auth Tab Switcher
+  if (tabLoginBtn && tabSignupBtn) {
+    tabLoginBtn.addEventListener('click', () => {
+      tabLoginBtn.classList.add('active');
+      tabSignupBtn.classList.remove('active');
+      loginForm.classList.remove('hidden');
+      signupForm.classList.add('hidden');
+      document.getElementById('authSubtitle').textContent = 'Welcome back! Sign in to access your financial analytics.';
+    });
+
+    tabSignupBtn.addEventListener('click', () => {
+      tabSignupBtn.classList.add('active');
+      tabLoginBtn.classList.remove('active');
+      signupForm.classList.remove('hidden');
+      loginForm.classList.add('hidden');
+      document.getElementById('authSubtitle').textContent = 'Create a new account to start tracking expenses.';
     });
   }
 
@@ -309,12 +332,13 @@ document.addEventListener('DOMContentLoaded', () => {
 // Initialize Firebase SDK
 async function initFirebase() {
   const DEFAULT_FIREBASE_CONFIG = {
-    projectId: "gen-lang-client-0055911079",
-    appId: "1:580995599768:web:7fcdc73da880f1c1dcafed",
-    apiKey: "AIzaSyCKAe7IpICI8s1x6lFC6JQvQu960C14OvE",
-    authDomain: "gen-lang-client-0055911079.firebaseapp.com",
-    storageBucket: "gen-lang-client-0055911079.firebasestorage.app",
-    messagingSenderId: "580995599768"
+    projectId: "finpulse-ecdb3",
+    appId: "1:220436316919:web:1ff6674e3d74da92da89f2",
+    apiKey: "AIzaSyD4dRmhMa5wCFBTnaCyhrJ2-uHh7KwfWSY",
+    authDomain: "finpulse-ecdb3.firebaseapp.com",
+    storageBucket: "finpulse-ecdb3.firebasestorage.app",
+    messagingSenderId: "220436316919",
+    measurementId: "G-HC34LT9GMF"
   };
 
   let firebaseConfig = DEFAULT_FIREBASE_CONFIG;
@@ -386,119 +410,97 @@ async function initFirebase() {
 
 // Setup Firebase Authentication Logic
 function setupAuthHandlers() {
-  // Google Sign-In Handler
-  const googleSignInBtn = document.getElementById('googleSignInBtn');
-  if (googleSignInBtn) {
-    googleSignInBtn.addEventListener('click', handleGoogleSignIn);
-  }
+  // Login Handler
+  if (loginForm) {
+    loginForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = document.getElementById('loginEmail').value.trim();
+      const password = document.getElementById('loginPassword').value;
 
-  // Handle Google Sign-In with popup & fallback to redirect
-  async function handleGoogleSignIn() {
-    if (!auth) {
-      showToast('Firebase Auth is not initialized yet.', 'danger');
-      return;
-    }
+      if (!email || !password) {
+        showToast('Please enter both email and password.', 'danger');
+        return;
+      }
 
-    const googleBtn = document.getElementById('googleSignInBtn');
-    if (googleBtn) {
-      googleBtn.disabled = true;
-      googleBtn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Connecting to Google...';
-    }
+      const submitBtn = document.getElementById('loginSubmitBtn');
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Signing In...';
 
-    try {
-      const provider = new window.firebase.auth.GoogleAuthProvider();
-      provider.addScope('profile');
-      provider.addScope('email');
-
-      let userCredential;
       try {
-        userCredential = await auth.signInWithPopup(provider);
-      } catch (popupErr) {
-        console.warn('Google signInWithPopup error/blocked, attempting signInWithRedirect:', popupErr);
-        if (popupErr.code === 'auth/popup-blocked' || popupErr.code === 'auth/popup-closed-by-user' || popupErr.code === 'auth/cancelled-popup-request') {
-          await auth.signInWithRedirect(provider);
-          return;
-        }
-        throw popupErr;
-      }
-
-      if (userCredential && userCredential.user) {
-        const user = userCredential.user;
-        if (db) {
-          try {
-            await db.collection('users').doc(user.uid).set({
-              uid: user.uid,
-              displayName: user.displayName || user.email?.split('@')[0] || 'Google User',
-              email: user.email,
-              photoURL: user.photoURL || null,
-              createdAt: new Date().toISOString()
-            }, { merge: true });
-          } catch (dbErr) {
-            console.warn('Firestore Google user doc sync error:', dbErr);
-          }
-        }
-        showToast(`🎉 Signed in with Google as ${user.displayName || user.email}!`, 'success');
-      }
-    } catch (err) {
-      console.error('Google Sign-In Error:', err);
-      let msg = err.message || 'Google Sign-In failed.';
-      if (err.code === 'auth/operation-not-allowed') {
-        msg = 'Google Sign-In is disabled in your Firebase console. Enable Google provider in Auth settings or continue as Guest.';
+        await auth.signInWithEmailAndPassword(email, password);
+        showToast('Signed in successfully!', 'success');
+        loginForm.reset();
         const authNotice = document.getElementById('authNotice');
-        const noticeText = document.getElementById('authNoticeText');
-        if (noticeText) noticeText.innerHTML = 'Google Sign-In is disabled in your Firebase console under <strong>Authentication &gt; Sign-in method</strong>. Click below to enter as Guest:';
-        if (authNotice) authNotice.classList.remove('hidden');
-      } else if (err.code === 'auth/unauthorized-domain') {
-        const domain = window.location.hostname;
-        msg = `Domain (${domain}) is not authorized for OAuth in your Firebase project. Add "${domain}" under Firebase Console > Authentication > Settings > Authorized domains.`;
-        const authNotice = document.getElementById('authNotice');
-        const noticeText = document.getElementById('authNoticeText');
-        if (noticeText) noticeText.innerHTML = `Domain <code>${domain}</code> is not authorized in your Firebase project. Go to <strong>Firebase Console &gt; Authentication &gt; Settings &gt; Authorized domains</strong> and add <code>${domain}</code> (or <code>run.app</code>), or click below to enter as Guest:`;
-        if (authNotice) authNotice.classList.remove('hidden');
-      } else if (err.code === 'auth/popup-closed-by-user') {
-        msg = 'Google sign-in popup was closed before completion.';
+        if (authNotice) authNotice.classList.add('hidden');
+      } catch (err) {
+        console.error('Login error:', err);
+        let msg = err.message || 'Login failed.';
+        if (err.code === 'auth/operation-not-allowed') {
+          msg = 'Email/Password auth is disabled in your Firebase Console. Click "Continue as Guest" or enable Email/Password in Firebase Console.';
+          const authNotice = document.getElementById('authNotice');
+          if (authNotice) authNotice.classList.remove('hidden');
+        } else if (err.code === 'auth/invalid-credential' || err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') {
+          msg = 'Invalid email or password.';
+        } else if (err.code === 'auth/invalid-email') {
+          msg = 'Please enter a valid email address.';
+        }
+        showToast(msg, 'danger');
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<i class="fa-solid fa-right-to-bracket"></i> Sign In';
       }
-      showToast(msg, 'danger');
-    } finally {
-      if (googleBtn) {
-        googleBtn.disabled = false;
-        googleBtn.innerHTML = `
-          <svg width="20" height="20" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.616z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z"/><path fill="#FBBC05" d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z"/></svg>
-          <span>Sign in with Google</span>
-        `;
-      }
-    }
+    });
   }
 
-  // Handle redirect sign-in result if used
-  if (auth && typeof auth.getRedirectResult === 'function') {
-    auth.getRedirectResult().then(async (result) => {
-      if (result && result.user) {
-        const user = result.user;
-        if (db) {
-          try {
-            await db.collection('users').doc(user.uid).set({
-              uid: user.uid,
-              displayName: user.displayName || user.email?.split('@')[0] || 'Google User',
-              email: user.email,
-              photoURL: user.photoURL || null,
-              createdAt: new Date().toISOString()
-            }, { merge: true });
-          } catch (dbErr) {
-            console.warn('Firestore redirect user doc sync error:', dbErr);
-          }
-        }
-        showToast(`🎉 Signed in with Google as ${user.displayName || user.email || 'User'}!`, 'success');
+  // Signup Handler
+  if (signupForm) {
+    signupForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const name = document.getElementById('signupName').value.trim();
+      const email = document.getElementById('signupEmail').value.trim();
+      const password = document.getElementById('signupPassword').value;
+
+      if (!name || !email || !password) {
+        showToast('Please fill out all required fields.', 'danger');
+        return;
       }
-    }).catch((err) => {
-      console.error('Redirect sign-in error:', err);
-      if (err.code === 'auth/unauthorized-domain') {
-        const domain = window.location.hostname;
+
+      if (password.length < 6) {
+        showToast('Password must be at least 6 characters long.', 'danger');
+        return;
+      }
+
+      const submitBtn = document.getElementById('signupSubmitBtn');
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Creating Account...';
+
+      try {
+        const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+        if (userCredential.user) {
+          await userCredential.user.updateProfile({ displayName: name });
+        }
+        showToast('Account created successfully!', 'success');
+        signupForm.reset();
         const authNotice = document.getElementById('authNotice');
-        const noticeText = document.getElementById('authNoticeText');
-        if (noticeText) noticeText.innerHTML = `Domain <code>${domain}</code> is not authorized in your Firebase project. Go to <strong>Firebase Console &gt; Authentication &gt; Settings &gt; Authorized domains</strong> and add <code>${domain}</code> (or <code>run.app</code>), or click below to enter as Guest:`;
-        if (authNotice) authNotice.classList.remove('hidden');
-        showToast(`Domain (${domain}) is not authorized for OAuth in Firebase.`, 'danger');
+        if (authNotice) authNotice.classList.add('hidden');
+      } catch (err) {
+        console.error('Signup error:', err);
+        let msg = err.message || 'Failed to create account.';
+        if (err.code === 'auth/operation-not-allowed') {
+          msg = 'Email/Password auth is disabled in your Firebase Console. Click "Continue as Guest" or enable Email/Password in Firebase Console.';
+          const authNotice = document.getElementById('authNotice');
+          if (authNotice) authNotice.classList.remove('hidden');
+        } else if (err.code === 'auth/email-already-in-use') {
+          msg = 'This email is already registered. Please sign in.';
+        } else if (err.code === 'auth/invalid-email') {
+          msg = 'Please enter a valid email address.';
+        } else if (err.code === 'auth/weak-password') {
+          msg = 'Password should be at least 6 characters.';
+        }
+        showToast(msg, 'danger');
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<i class="fa-solid fa-user-plus"></i> Create Account';
       }
     });
   }
@@ -507,7 +509,7 @@ function setupAuthHandlers() {
   const guestLoginBtn = document.getElementById('guestLoginBtn');
   if (guestLoginBtn) {
     guestLoginBtn.addEventListener('click', () => {
-      currentUser = { uid: 'guest-local', displayName: 'Guest User', email: 'guest@local' };
+      currentUser = null;
       if (authScreen) authScreen.classList.add('hidden');
       if (appContainer) appContainer.classList.remove('hidden');
 
@@ -524,6 +526,79 @@ function setupAuthHandlers() {
       renderApp();
 
       showToast('Entered as Guest (Local storage mode)', 'info');
+    });
+  }
+
+  // Forgot Password Modal Handlers
+  const forgotPasswordBtn = document.getElementById('forgotPasswordBtn');
+  const resetPasswordModal = document.getElementById('resetPasswordModal');
+  const cancelResetBtn = document.getElementById('cancelResetBtn');
+  const resetPasswordForm = document.getElementById('resetPasswordForm');
+  const resetEmailInput = document.getElementById('resetEmail');
+
+  if (forgotPasswordBtn && resetPasswordModal) {
+    forgotPasswordBtn.addEventListener('click', () => {
+      const currentLoginEmail = document.getElementById('loginEmail')?.value.trim() || '';
+      if (resetEmailInput) {
+        resetEmailInput.value = currentLoginEmail;
+      }
+      resetPasswordModal.classList.remove('hidden');
+      if (resetEmailInput) resetEmailInput.focus();
+    });
+  }
+
+  if (cancelResetBtn && resetPasswordModal) {
+    cancelResetBtn.addEventListener('click', () => {
+      resetPasswordModal.classList.add('hidden');
+    });
+  }
+
+  if (resetPasswordModal) {
+    resetPasswordModal.addEventListener('click', (e) => {
+      if (e.target === resetPasswordModal) {
+        resetPasswordModal.classList.add('hidden');
+      }
+    });
+  }
+
+  if (resetPasswordForm) {
+    resetPasswordForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = resetEmailInput ? resetEmailInput.value.trim() : '';
+
+      if (!email) {
+        showToast('Please enter your email address.', 'danger');
+        return;
+      }
+
+      const sendBtn = document.getElementById('sendResetBtn');
+      if (sendBtn) {
+        sendBtn.disabled = true;
+        sendBtn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Sending...';
+      }
+
+      try {
+        await auth.sendPasswordResetEmail(email);
+        showToast(`Password reset link sent to ${email}! Check your inbox.`, 'success');
+        resetPasswordModal.classList.add('hidden');
+        resetPasswordForm.reset();
+      } catch (err) {
+        console.error('Password reset error:', err);
+        let msg = err.message || 'Failed to send password reset email.';
+        if (err.code === 'auth/operation-not-allowed') {
+          msg = 'Email/Password auth is disabled in your Firebase Console. Enable Email/Password under Auth -> Sign-in method.';
+        } else if (err.code === 'auth/user-not-found') {
+          msg = 'No account found with this email address.';
+        } else if (err.code === 'auth/invalid-email') {
+          msg = 'Please enter a valid email address.';
+        }
+        showToast(msg, 'danger');
+      } finally {
+        if (sendBtn) {
+          sendBtn.disabled = false;
+          sendBtn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Send Link';
+        }
+      }
     });
   }
 

@@ -1091,38 +1091,6 @@ body {
   gap: 0.75rem;
 }
 
-/* OTP Verification Inputs */
-.otp-digit-input {
-  width: 46px;
-  height: 52px;
-  text-align: center;
-  font-size: 1.4rem;
-  font-weight: 700;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--glass-border);
-  background: rgba(15, 23, 42, 0.6);
-  color: var(--text-primary);
-  transition: all var(--transition-fast);
-}
-
-.otp-digit-input:focus {
-  outline: none;
-  border-color: var(--accent-emerald);
-  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.25);
-  background: rgba(15, 23, 42, 0.9);
-}
-
-body.light-theme .otp-digit-input {
-  background: #ffffff;
-  border-color: #cbd5e1;
-  color: #0f172a;
-}
-
-body.light-theme .otp-digit-input:focus {
-  border-color: var(--accent-emerald);
-  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
-}
-
 /* ==========================================================================
    Footer
    ========================================================================== */

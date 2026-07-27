@@ -8,7 +8,6 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = 3000;
 
-app.use(express.json());
 app.use(express.static(__dirname));
 
 app.get('*', (req, res) => {
@@ -18,5 +17,3 @@ app.get('*', (req, res) => {
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`FinPulse app listening on http://0.0.0.0:${PORT}`);
 });
-
-
