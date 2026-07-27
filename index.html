@@ -386,6 +386,19 @@
     </div>
   </div>
 
+  <!-- Update Notification Banner (GitHub Release Link එක සමඟ) -->
+  <div id="updateBanner"
+    style="display: none; background: #0f172a; color: #fff; padding: 12px 20px; text-align: center; position: fixed; bottom: 0; left: 0; width: 100%; z-index: 9999; box-shadow: 0 -4px 12px rgba(0,0,0,0.15);">
+    <span style="font-size: 14px; margin-right: 15px;">🚀 New version of FinPulse is available!</span>
+    <a id="downloadUpdateBtn"
+      href="https://github.com/nimesh-kavindya/FinPulse-Expense-Tracker/releases/download/v1.0/FinPulse.apk"
+      target="_blank"
+      style="background: #10b981; color: white; padding: 6px 14px; border-radius: 6px; text-decoration: none; font-weight: bold; font-size: 13px;">Update
+      Now</a>
+    <button onclick="document.getElementById('updateBanner').style.display='none'"
+      style="background: transparent; border: none; color: #94a3b8; font-size: 16px; margin-left: 15px; cursor: pointer;">&times;</button>
+  </div>
+
 </body>
 
 </html>

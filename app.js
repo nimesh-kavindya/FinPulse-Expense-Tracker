@@ -3,6 +3,9 @@
  * Enhanced Core JavaScript Logic (with LKR & USD Currency Converter)
  */
 
+// App Version Configuration for Update Notifications
+const CURRENT_APP_VERSION = '1.0.1';
+
 // Local Storage Key & Storage Manager
 const STORAGE_KEY = 'finpulse_transactions_v1';
 const CURRENCY_STORAGE_KEY = 'finpulse_currency';
@@ -120,6 +123,17 @@ const currencySelect = document.getElementById('currencySelect');
 
 // Initialize Application
 document.addEventListener('DOMContentLoaded', () => {
+  // Check for App Updates
+  const savedVersion = localStorage.getItem('finpulse_version');
+  if (!savedVersion) {
+    localStorage.setItem('finpulse_version', CURRENT_APP_VERSION);
+  } else if (savedVersion !== CURRENT_APP_VERSION) {
+    const updateBanner = document.getElementById('updateBanner');
+    if (updateBanner) {
+      updateBanner.style.display = 'block';
+    }
+  }
+
   if (dateInput) {
     dateInput.value = getFormattedDate(0);
   }
@@ -610,6 +624,7 @@ window.addEventListener('load', () => {
     }, 800);
   }
 });
+
 // Clean & Fixed PDF File Download using jsPDF
 document.getElementById('exportPdfBtn')?.addEventListener('click', () => {
   try {
