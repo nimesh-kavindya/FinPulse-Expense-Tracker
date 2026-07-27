@@ -408,8 +408,174 @@ async function initFirebase() {
   }
 }
 
+// Centralized Firebase Auth Error Handler
+function handleAuthError(err, context = 'Authentication') {
+  console.error(`[Firebase Auth - ${context}] Error:`, err);
+  const code = err ? err.code : '';
+  const message = err ? err.message : '';
+
+  let userFriendlyMsg = 'Authentication failed. Please try again.';
+  let showNoticeBanner = false;
+
+  switch (code) {
+    case 'auth/unauthorized-domain':
+      userFriendlyMsg = 'This domain is not authorized in your Firebase Console. Please add this domain under Authentication > Settings > Authorized Domains in Firebase Console.';
+      showNoticeBanner = true;
+      break;
+
+    case 'auth/popup-closed-by-user':
+      userFriendlyMsg = 'The Google sign-in popup was closed before completing authentication.';
+      break;
+
+    case 'auth/popup-blocked':
+      userFriendlyMsg = 'The Google sign-in popup was blocked by your browser. Please allow popups for this site and try again.';
+      break;
+
+    case 'auth/cancelled-popup-request':
+      userFriendlyMsg = 'The sign-in popup request was cancelled.';
+      break;
+
+    case 'auth/operation-not-allowed':
+      userFriendlyMsg = 'Google Sign-In is disabled in your Firebase console. Please enable Google under Authentication > Sign-in method.';
+      showNoticeBanner = true;
+      break;
+
+    case 'auth/account-exists-with-different-credential':
+      userFriendlyMsg = 'An account already exists with the same email address using a different sign-in method.';
+      break;
+
+    case 'auth/invalid-credential':
+    case 'auth/user-not-found':
+    case 'auth/wrong-password':
+      userFriendlyMsg = 'Invalid email or password. Please check your credentials.';
+      break;
+
+    case 'auth/invalid-email':
+      userFriendlyMsg = 'Please enter a valid email address.';
+      break;
+
+    case 'auth/email-already-in-use':
+      userFriendlyMsg = 'This email address is already registered. Please sign in instead.';
+      break;
+
+    case 'auth/weak-password':
+      userFriendlyMsg = 'Password must be at least 6 characters long.';
+      break;
+
+    case 'auth/network-request-failed':
+      userFriendlyMsg = 'Network request failed. Please check your internet connection.';
+      break;
+
+    case 'auth/user-disabled':
+      userFriendlyMsg = 'This account has been disabled by an administrator.';
+      break;
+
+    default:
+      if (message && message.toLowerCase().includes('unauthorized domain')) {
+        userFriendlyMsg = 'This domain is not authorized in your Firebase Console. Please add this domain under Authentication > Settings > Authorized Domains.';
+        showNoticeBanner = true;
+      } else if (message) {
+        userFriendlyMsg = message;
+      }
+      break;
+  }
+
+  showToast(userFriendlyMsg, 'danger');
+
+  const authNotice = document.getElementById('authNotice');
+  const authNoticeText = document.getElementById('authNoticeText');
+  if (authNotice && authNoticeText) {
+    if (showNoticeBanner) {
+      authNoticeText.innerHTML = `<strong>Firebase Notice:</strong> ${userFriendlyMsg}<br>You can also click <strong>Continue as Guest</strong> below to access local storage mode.`;
+      authNotice.classList.remove('hidden');
+    }
+  }
+}
+
+// Update Logged-in User Profile Display
+function updateUserProfileDisplay(user) {
+  if (!user) return;
+  if (userEmailText) {
+    userEmailText.textContent = user.displayName || user.email || 'User';
+  }
+
+  const userProfileBadge = document.getElementById('userProfileBadge');
+  if (userProfileBadge) {
+    let avatarImg = userProfileBadge.querySelector('.user-avatar-img');
+    const userBadgeIcon = userProfileBadge.querySelector('i.fa-user');
+
+    if (user.photoURL) {
+      if (!avatarImg) {
+        avatarImg = document.createElement('img');
+        avatarImg.className = 'user-avatar-img';
+        avatarImg.style.width = '24px';
+        avatarImg.style.height = '24px';
+        avatarImg.style.borderRadius = '50%';
+        avatarImg.style.objectFit = 'cover';
+        avatarImg.style.border = '1.5px solid var(--accent-indigo)';
+        if (userBadgeIcon) userBadgeIcon.style.display = 'none';
+        userProfileBadge.insertBefore(avatarImg, userEmailText);
+      }
+      avatarImg.src = user.photoURL;
+      avatarImg.alt = user.displayName || 'User Avatar';
+      avatarImg.style.display = 'inline-block';
+    } else {
+      if (avatarImg) avatarImg.style.display = 'none';
+      if (userBadgeIcon) userBadgeIcon.style.display = 'inline-block';
+    }
+  }
+}
+
 // Setup Firebase Authentication Logic
 function setupAuthHandlers() {
+  // Google Sign-In Handler
+  const googleLoginBtn = document.getElementById('googleLoginBtn');
+  if (googleLoginBtn) {
+    googleLoginBtn.addEventListener('click', async () => {
+      if (!auth) {
+        showToast('Firebase Auth is not initialized properly.', 'danger');
+        return;
+      }
+
+      const googleBtnText = document.getElementById('googleBtnText');
+      const originalText = googleBtnText ? googleBtnText.textContent : 'Sign in with Google';
+
+      googleLoginBtn.disabled = true;
+      if (googleBtnText) {
+        googleBtnText.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Connecting to Google...';
+      }
+
+      try {
+        let provider;
+        if (window.firebase && window.firebase.auth && window.firebase.auth.GoogleAuthProvider) {
+          provider = new window.firebase.auth.GoogleAuthProvider();
+        } else if (auth.constructor && auth.constructor.GoogleAuthProvider) {
+          provider = new auth.constructor.GoogleAuthProvider();
+        } else {
+          provider = new firebase.auth.GoogleAuthProvider();
+        }
+
+        if (provider && typeof provider.setCustomParameters === 'function') {
+          provider.setCustomParameters({ prompt: 'select_account' });
+        }
+
+        const result = await auth.signInWithPopup(provider);
+        const user = result.user;
+        showToast(`Welcome, ${user.displayName || user.email || 'User'}!`, 'success');
+
+        const authNotice = document.getElementById('authNotice');
+        if (authNotice) authNotice.classList.add('hidden');
+      } catch (err) {
+        handleAuthError(err, 'Google Sign-In');
+      } finally {
+        googleLoginBtn.disabled = false;
+        if (googleBtnText) {
+          googleBtnText.textContent = originalText;
+        }
+      }
+    });
+  }
+
   // Login Handler
   if (loginForm) {
     loginForm.addEventListener('submit', async (e) => {
@@ -433,18 +599,7 @@ function setupAuthHandlers() {
         const authNotice = document.getElementById('authNotice');
         if (authNotice) authNotice.classList.add('hidden');
       } catch (err) {
-        console.error('Login error:', err);
-        let msg = err.message || 'Login failed.';
-        if (err.code === 'auth/operation-not-allowed') {
-          msg = 'Email/Password auth is disabled in your Firebase Console. Click "Continue as Guest" or enable Email/Password in Firebase Console.';
-          const authNotice = document.getElementById('authNotice');
-          if (authNotice) authNotice.classList.remove('hidden');
-        } else if (err.code === 'auth/invalid-credential' || err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') {
-          msg = 'Invalid email or password.';
-        } else if (err.code === 'auth/invalid-email') {
-          msg = 'Please enter a valid email address.';
-        }
-        showToast(msg, 'danger');
+        handleAuthError(err, 'Sign In');
       } finally {
         submitBtn.disabled = false;
         submitBtn.innerHTML = '<i class="fa-solid fa-right-to-bracket"></i> Sign In';
@@ -484,20 +639,7 @@ function setupAuthHandlers() {
         const authNotice = document.getElementById('authNotice');
         if (authNotice) authNotice.classList.add('hidden');
       } catch (err) {
-        console.error('Signup error:', err);
-        let msg = err.message || 'Failed to create account.';
-        if (err.code === 'auth/operation-not-allowed') {
-          msg = 'Email/Password auth is disabled in your Firebase Console. Click "Continue as Guest" or enable Email/Password in Firebase Console.';
-          const authNotice = document.getElementById('authNotice');
-          if (authNotice) authNotice.classList.remove('hidden');
-        } else if (err.code === 'auth/email-already-in-use') {
-          msg = 'This email is already registered. Please sign in.';
-        } else if (err.code === 'auth/invalid-email') {
-          msg = 'Please enter a valid email address.';
-        } else if (err.code === 'auth/weak-password') {
-          msg = 'Password should be at least 6 characters.';
-        }
-        showToast(msg, 'danger');
+        handleAuthError(err, 'Sign Up');
       } finally {
         submitBtn.disabled = false;
         submitBtn.innerHTML = '<i class="fa-solid fa-user-plus"></i> Create Account';
@@ -583,16 +725,7 @@ function setupAuthHandlers() {
         resetPasswordModal.classList.add('hidden');
         resetPasswordForm.reset();
       } catch (err) {
-        console.error('Password reset error:', err);
-        let msg = err.message || 'Failed to send password reset email.';
-        if (err.code === 'auth/operation-not-allowed') {
-          msg = 'Email/Password auth is disabled in your Firebase Console. Enable Email/Password under Auth -> Sign-in method.';
-        } else if (err.code === 'auth/user-not-found') {
-          msg = 'No account found with this email address.';
-        } else if (err.code === 'auth/invalid-email') {
-          msg = 'Please enter a valid email address.';
-        }
-        showToast(msg, 'danger');
+        handleAuthError(err, 'Password Reset');
       } finally {
         if (sendBtn) {
           sendBtn.disabled = false;
@@ -625,9 +758,7 @@ function setupAuthHandlers() {
         if (authScreen) authScreen.classList.add('hidden');
         if (appContainer) appContainer.classList.remove('hidden');
 
-        if (userEmailText) {
-          userEmailText.textContent = user.displayName || user.email;
-        }
+        updateUserProfileDisplay(user);
 
         // Sync user transactions from Firestore
         subscribeToUserTransactions(user.uid);
