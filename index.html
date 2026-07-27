@@ -6,9 +6,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>FinPulse | Modern Expense Tracker & Visual Analytics BY Nimesh Kavindya</title>
 
-  <link rel="stylesheet" href="./style.css">
-
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <meta name="description"
     content="FinPulse is a sleek, glassmorphism-inspired dark mode expense tracker with real-time visual analytics, month filtering, and local data persistence.">
 
@@ -18,8 +15,10 @@
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap"
     rel="stylesheet">
 
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
   <!-- PWA Manifest Link -->
-  <link rel="manifest" href="https://nimesh-kavindya.github.io/FinPulse-Expense-Tracker/manifest.json">
+  <link rel="manifest" href="./manifest.json">
   <meta name="theme-color" content="#0ea5e9">
 
   <!-- Font Awesome Icons CDN -->
@@ -29,6 +28,12 @@
 
   <!-- Chart.js CDN -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+  <!-- Firebase Compat SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-analytics-compat.js"></script>
 
   <!-- Custom CSS -->
   <link rel="stylesheet" href="styles.css">
@@ -50,7 +55,114 @@
   <div class="bg-glow blob-2"></div>
   <div class="bg-glow blob-3"></div>
 
-  <div class="app-container">
+  <!-- Authentication Screen (Shown when logged out) -->
+  <div id="authScreen" class="auth-container">
+    <div class="glass-card auth-card">
+      <div class="auth-header">
+        <div class="logo-icon">
+          <i class="fa-solid fa-chart-line"></i>
+          <span class="pulse-dot"></span>
+        </div>
+        <h2>Fin<span>Pulse</span></h2>
+        <p id="authSubtitle">Welcome back! Sign in to access your financial analytics.</p>
+      </div>
+
+      <!-- Auth Switcher Tabs -->
+      <div class="auth-tabs">
+        <button type="button" id="tabLoginBtn" class="auth-tab-btn active">Sign In</button>
+        <button type="button" id="tabSignupBtn" class="auth-tab-btn">Sign Up</button>
+      </div>
+
+      <!-- Login Form -->
+      <form id="loginForm" class="auth-form">
+        <div class="form-group">
+          <label for="loginEmail"><i class="fa-solid fa-envelope"></i> Email Address</label>
+          <div class="input-wrapper">
+            <i class="fa-solid fa-at input-icon"></i>
+            <input type="email" id="loginEmail" placeholder="name@example.com" required autocomplete="email">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="loginPassword"><i class="fa-solid fa-lock"></i> Password</label>
+          <div class="password-toggle-wrapper">
+            <div class="input-wrapper" style="width: 100%;">
+              <i class="fa-solid fa-key input-icon"></i>
+              <input type="password" id="loginPassword" placeholder="••••••••" required autocomplete="current-password">
+            </div>
+            <button type="button" class="password-toggle-btn" onclick="togglePasswordVisibility('loginPassword', this)" title="Toggle password visibility">
+              <i class="fa-solid fa-eye"></i>
+            </button>
+          </div>
+        </div>
+
+        <div class="auth-forgot-row">
+          <button type="button" id="forgotPasswordBtn" class="auth-link-btn">
+            <i class="fa-solid fa-key"></i> Forgot Password?
+          </button>
+        </div>
+
+        <button type="submit" id="loginSubmitBtn" class="btn btn-primary btn-block">
+          <i class="fa-solid fa-right-to-bracket"></i> Sign In
+        </button>
+      </form>
+
+      <!-- Sign Up Form -->
+      <form id="signupForm" class="auth-form hidden">
+        <div class="form-group">
+          <label for="signupName"><i class="fa-solid fa-user"></i> Full Name</label>
+          <div class="input-wrapper">
+            <i class="fa-solid fa-id-card input-icon"></i>
+            <input type="text" id="signupName" placeholder="John Doe" required autocomplete="name">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="signupEmail"><i class="fa-solid fa-envelope"></i> Email Address</label>
+          <div class="input-wrapper">
+            <i class="fa-solid fa-at input-icon"></i>
+            <input type="email" id="signupEmail" placeholder="name@example.com" required autocomplete="email">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="signupPassword"><i class="fa-solid fa-lock"></i> Password (min. 6 characters)</label>
+          <div class="password-toggle-wrapper">
+            <div class="input-wrapper" style="width: 100%;">
+              <i class="fa-solid fa-key input-icon"></i>
+              <input type="password" id="signupPassword" placeholder="••••••••" minlength="6" required autocomplete="new-password">
+            </div>
+            <button type="button" class="password-toggle-btn" onclick="togglePasswordVisibility('signupPassword', this)" title="Toggle password visibility">
+              <i class="fa-solid fa-eye"></i>
+            </button>
+          </div>
+        </div>
+
+        <button type="submit" id="signupSubmitBtn" class="btn btn-primary btn-block">
+          <i class="fa-solid fa-user-plus"></i> Create Account
+        </button>
+      </form>
+
+      <!-- Auth Divider & Guest Mode Button -->
+      <div class="auth-divider" style="display: flex; align-items: center; margin: 0.5rem 0; gap: 0.75rem;">
+        <div style="flex: 1; height: 1px; background: var(--glass-border);"></div>
+        <span style="font-size: 0.8rem; color: var(--text-muted); font-weight: 600;">OR</span>
+        <div style="flex: 1; height: 1px; background: var(--glass-border);"></div>
+      </div>
+
+      <button type="button" id="guestLoginBtn" class="btn btn-outline btn-block" style="display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
+        <i class="fa-solid fa-user-shield"></i> Continue as Guest / Local Mode
+      </button>
+
+      <div id="authNotice" class="hidden" style="margin-top: 0.5rem; padding: 0.75rem 1rem; border-radius: var(--radius-sm); background: rgba(244, 63, 94, 0.12); border: 1px solid rgba(244, 63, 94, 0.3); color: #fecdd3; font-size: 0.82rem; line-height: 1.4;">
+        <i class="fa-solid fa-triangle-exclamation" style="margin-right: 0.35rem; color: #f43f5e;"></i>
+        <span id="authNoticeText">Email/Password sign-in is disabled in your Firebase console. Enable it under <strong>Authentication &gt; Sign-in method</strong>, or click <strong>Continue as Guest</strong> above.</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Application Container (Shown when logged in) -->
+  <div id="appContainer" class="app-container hidden">
     <!-- Header -->
     <header class="app-header glass-card">
       <div class="brand">
@@ -64,17 +176,35 @@
         </div>
       </div>
 
-      <!-- Currency Selector -->
-      <div class="currency-selector-wrapper"
-        style="display: inline-flex; align-items: center; gap: 0.5rem; margin-left: auto;">
-        <label for="currencySelect"><i class="fa-solid fa-coins"></i> Currency:</label>
-        <select id="currencySelect" class="select-sm">
-          <option value="LKR">Rs. (LKR)</option>
-          <option value="USD">$ (USD)</option>
-        </select>
-      </div>
+      <!-- Currency Selector & Header Controls -->
+      <div class="header-actions" style="margin-left: auto; display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+        <!-- Version Check Badge -->
+        <button id="versionBadgeBtn" class="version-badge-btn" title="Check for FinPulse App Updates" onclick="checkAppVersion(true)">
+          <i class="fa-solid fa-code-branch"></i> <span id="appVersionText">v1.0.1</span>
+        </button>
 
-      <div class="header-actions">
+        <!-- Theme Toggle Button -->
+        <button id="themeToggleBtn" class="theme-toggle-btn" title="Toggle Light / Dark Theme">
+          <i id="themeToggleIcon" class="fa-solid fa-moon"></i>
+          <span id="themeToggleText">Dark</span>
+        </button>
+
+        <div class="currency-selector-wrapper" style="display: inline-flex; align-items: center; gap: 0.5rem;">
+          <select id="currencySelect" class="select-sm" aria-label="Select Currency">
+            <option value="LKR">Rs. (LKR)</option>
+            <option value="USD">$ (USD)</option>
+          </select>
+        </div>
+
+        <!-- Logged In User Profile Badge & Logout -->
+        <div id="userProfileBadge" class="user-badge">
+          <i class="fa-solid fa-user"></i>
+          <span id="userEmailText">user@example.com</span>
+          <button id="logoutBtn" class="btn btn-sm btn-outline" title="Sign Out">
+            <i class="fa-solid fa-right-from-bracket"></i> <span>Logout</span>
+          </button>
+        </div>
+
         <button id="clearAllBtn" class="btn btn-danger-outline" title="Clear All Data">
           <i class="fa-solid fa-trash-can"></i> <span>Clear All</span>
         </button>
@@ -200,10 +330,68 @@
             </button>
           </form>
         </div>
+
+        <!-- Monthly Category Budgets & Limit Alerts Card -->
+        <div class="glass-card budget-card">
+          <div class="card-header" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1.25rem;">
+            <div>
+              <h3 style="margin: 0; display: flex; align-items: center; gap: 0.5rem; font-size: 1.05rem;">
+                <i class="fa-solid fa-bullseye" style="color: var(--accent-indigo);"></i>
+                Monthly Category Limits
+              </h3>
+              <p style="margin: 0.2rem 0 0 0; font-size: 0.8rem; color: var(--text-muted);">
+                Set monthly spending limits & receive excess notifications
+              </p>
+            </div>
+            <div style="display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap;">
+              <button id="enableNotifBtn" type="button" class="btn btn-sm btn-outline" title="Enable Desktop Notifications" style="font-size: 0.75rem; padding: 0.35rem 0.65rem; display: inline-flex; align-items: center; gap: 0.35rem;">
+                <i class="fa-solid fa-bell"></i> Alerts
+              </button>
+              <button id="openBudgetModalBtn" type="button" class="btn btn-sm btn-outline" title="Set Monthly Category Limits" style="font-size: 0.75rem; padding: 0.35rem 0.65rem; display: inline-flex; align-items: center; gap: 0.35rem;">
+                <i class="fa-solid fa-sliders"></i> Edit Limits
+              </button>
+            </div>
+          </div>
+
+          <!-- Alert Notice Banner for Exceeded / Warning Categories -->
+          <div id="budgetExceededAlert" class="budget-alert-box hidden" style="margin-top: 0.75rem;">
+          </div>
+
+          <!-- Category Progress Bars List -->
+          <div id="categoryBudgetList" class="category-budget-list" style="margin-top: 1rem; display: flex; flex-direction: column; gap: 0.85rem;">
+          </div>
+        </div>
       </section>
 
       <!-- Right Column: Visual Analytics & Transaction History -->
       <section class="right-column">
+        <!-- Monthly Financial Overview & Savings Chart Card -->
+        <div class="glass-card monthly-analytics-card">
+          <div class="card-header" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem;">
+            <div>
+              <h3 style="margin: 0; display: flex; align-items: center; gap: 0.5rem; font-size: 1.05rem;">
+                <i class="fa-solid fa-chart-column" style="color: var(--accent-indigo);"></i>
+                Monthly Financial Overview
+              </h3>
+              <p style="margin: 0.2rem 0 0 0; font-size: 0.8rem; color: var(--text-muted);">
+                Income vs Expenses vs Net Savings per month
+              </p>
+            </div>
+            <div style="display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap;">
+              <span class="badge badge-income" id="monthlyChartIncomeBadge"><i class="fa-solid fa-arrow-down-left"></i> Income</span>
+              <span class="badge badge-expense" id="monthlyChartExpenseBadge"><i class="fa-solid fa-arrow-up-right"></i> Expense</span>
+              <span class="badge badge-indigo" id="monthlyChartSavingsBadge"><i class="fa-solid fa-wallet"></i> Net Savings</span>
+            </div>
+          </div>
+          <div class="chart-wrapper" style="position: relative; height: 260px; margin-top: 1rem;">
+            <canvas id="monthlyFinancialChart"></canvas>
+            <div class="chart-empty-state hidden" id="monthlyChartEmptyState">
+              <i class="fa-solid fa-chart-column"></i>
+              <p>No financial data recorded yet. Add income or expenses to view monthly analytics.</p>
+            </div>
+          </div>
+        </div>
+
         <!-- Visual Analytics Chart Card -->
         <div class="glass-card chart-card">
           <div class="card-header">
@@ -222,31 +410,31 @@
         <!-- History List Card -->
         <div class="glass-card history-card">
           <div class="card-header history-header">
-            <div>
-              <h3><i class="fa-solid fa-list-check"></i> History</h3>
-              <span class="count-badge" id="transactionCount">0 Items</span>
+            <div style="display: flex; align-items: center; justify-content: space-between; width: 100%; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 0.75rem;">
+              <div style="display: flex; align-items: center; gap: 0.6rem;">
+                <h3 style="margin: 0;"><i class="fa-solid fa-list-check"></i> History</h3>
+                <span class="count-badge" id="transactionCount">0 Items</span>
+              </div>
+
+              <!-- Backup & Restore Toolbar -->
+              <div class="backup-restore-container">
+                <button id="exportJsonBtn" type="button" class="backup-btn" title="Export transactions backup (JSON)">
+                  <i class="fa-solid fa-cloud-arrow-down"></i> Backup Data
+                </button>
+
+                <label for="importJsonFile" class="restore-label" title="Restore transactions from JSON backup file">
+                  <i class="fa-solid fa-cloud-arrow-up"></i> Restore Data
+                </label>
+                <input type="file" id="importJsonFile" accept=".json" style="display: none;">
+
+                <button id="exportPdfBtn" class="btn-export-pdf" title="Export Financial Summary to PDF">
+                  <i class="fa-solid fa-file-pdf"></i> PDF Report
+                </button>
+              </div>
             </div>
 
-            <!-- Backup & Restore Buttons (PDF එකට උඩින්) -->
-            <div class="backup-restore-container"
-              style="margin-bottom: 12px; display: flex; gap: 12px; flex-wrap: wrap;">
-              <button id="exportJsonBtn" type="button" class="backup-btn">
-                <i class="fa-solid fa-download"></i> Backup Data
-              </button>
-
-              <label for="importJsonFile" class="restore-label">
-                <i class="fa-solid fa-upload"></i> Restore Data
-              </label>
-              <input type="file" id="importJsonFile" accept=".json" style="display: none;">
-            </div>
             <!-- PDF Export Button & Filters -->
-            <div class="history-controls" style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
-              <!-- Export to PDF Button -->
-              <button id="exportPdfBtn" class="btn-export-pdf" title="Export Dashboard to PDF"
-                style="background: #ef4444; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 5px;">
-                <i class="fa-solid fa-file-pdf"></i> PDF
-              </button>
-
+            <div class="history-controls">
               <!-- Search -->
               <div class="search-box">
                 <i class="fa-solid fa-magnifying-glass"></i>
@@ -307,6 +495,39 @@
     </footer>
   </div>
 
+  <!-- Reset Password Modal -->
+  <div id="resetPasswordModal" class="modal-backdrop hidden">
+    <div class="glass-card modal-card">
+      <div class="modal-header">
+        <div class="modal-icon" style="width: 42px; height: 42px; border-radius: var(--radius-md); background: rgba(99, 102, 241, 0.15); border: 1px solid rgba(99, 102, 241, 0.3); color: var(--accent-indigo); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; flex-shrink: 0;">
+          <i class="fa-solid fa-key"></i>
+        </div>
+        <div>
+          <h3>Reset Password</h3>
+          <p class="modal-subtitle">Firebase Security</p>
+        </div>
+      </div>
+      <p class="modal-body" style="margin-bottom: 1rem;">
+        Enter your registered account email address below and we'll send you a password reset link.
+      </p>
+      <form id="resetPasswordForm">
+        <div class="form-group" style="margin-bottom: 1.25rem;">
+          <label for="resetEmail"><i class="fa-solid fa-envelope"></i> Email Address</label>
+          <div class="input-wrapper">
+            <i class="fa-solid fa-at input-icon"></i>
+            <input type="email" id="resetEmail" placeholder="name@example.com" required autocomplete="email">
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button type="button" id="cancelResetBtn" class="btn btn-outline">Cancel</button>
+          <button type="submit" id="sendResetBtn" class="btn btn-primary">
+            <i class="fa-solid fa-paper-plane"></i> Send Link
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- Custom Confirmation Modal Backdrop -->
   <div id="confirmModal" class="modal-backdrop hidden">
     <div class="glass-card modal-card">
@@ -329,50 +550,35 @@
     </div>
   </div>
 
+  <!-- Edit Category Monthly Limits Modal -->
+  <div id="budgetModal" class="modal-backdrop hidden">
+    <div class="glass-card modal-card" style="max-width: 480px;">
+      <div class="modal-header">
+        <div class="modal-icon" style="width: 42px; height: 42px; border-radius: var(--radius-md); background: rgba(99, 102, 241, 0.15); border: 1px solid rgba(99, 102, 241, 0.3); color: var(--accent-indigo); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; flex-shrink: 0;">
+          <i class="fa-solid fa-sliders"></i>
+        </div>
+        <div>
+          <h3>Monthly Category Limits</h3>
+          <p class="modal-subtitle">Set monthly max spending budget per category</p>
+        </div>
+      </div>
+      <form id="budgetForm" style="margin-top: 1rem;">
+        <div id="budgetInputsContainer" style="display: flex; flex-direction: column; gap: 0.85rem;">
+          <!-- Category limit inputs dynamically generated in app.js -->
+        </div>
+        <div class="modal-actions" style="margin-top: 1.25rem; display: flex; gap: 0.75rem; justify-content: flex-end;">
+          <button type="button" id="closeBudgetModalBtn" class="btn btn-outline">Cancel</button>
+          <button type="submit" class="btn btn-primary"><i class="fa-solid fa-floppy-disk"></i> Save Limits</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- Toast Notification Container -->
   <div id="toastContainer" class="toast-container"></div>
 
   <!-- App Script -->
   <script src="app.js"></script>
-
-  <script>
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js')
-          .then(reg => console.log('Service Worker registered!'))
-          .catch(err => console.log('Service Worker registration failed: ', err));
-      });
-    }
-  </script>
-  <script>
-    // Register Service Worker for auto-updates
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js')
-          .then((reg) => {
-            console.log('Service Worker Registered!', reg);
-
-            // Check for available updates
-            reg.onupdatefound = () => {
-              const installingWorker = reg.installing;
-              installingWorker.onstatechange = () => {
-                if (installingWorker.state === 'installed') {
-                  if (navigator.serviceWorker.controller) {
-                    console.log('New content is available; please refresh.');
-                    if (confirm("A new update for FinPulse is available. Would you like to update the app?")) {
-                      window.location.reload();
-                    }
-                  }
-                }
-              };
-            };
-          })
-          .catch((err) => {
-            console.log('Service Worker Registration Failed', err);
-          });
-      });
-    }
-  </script>
 
   <!-- Reset Demo Confirmation Modal -->
   <div id="resetDemoModal" class="modal-overlay" style="display: none;">
@@ -386,29 +592,28 @@
     </div>
   </div>
 
-  <!-- Clear All Confirmation Modal -->
-  <div id="clearAllModal" class="modal-overlay" style="display: none;">
-    <div class="modal-box">
-      <h3>Clear All Data?</h3>
-      <p>This will remove all your data permanently and cannot be undone. Are you sure?</p>
-      <div class="modal-buttons">
-        <button onclick="closeClearAllModal()" class="btn-cancel">Cancel</button>
-        <button onclick="confirmClearAll()" class="btn-confirm">Confirm</button>
+  <!-- In-App Update Notification Banner -->
+  <div id="updateBanner" class="update-banner hidden">
+    <div class="update-banner-content">
+      <div class="update-banner-info">
+        <div class="update-banner-icon">
+          <i class="fa-solid fa-arrows-rotate fa-spin-pulse"></i>
+        </div>
+        <div>
+          <h4 id="updateBannerTitle">🚀 New Update Available (<span id="latestVersionText">v1.0.2</span>)</h4>
+          <p id="updateBannerNotes">A newer version of FinPulse is ready with performance improvements & offline capabilities.</p>
+        </div>
+      </div>
+      <div class="update-banner-actions">
+        <button id="applyUpdateBtn" class="btn btn-sm btn-success" onclick="applyAppUpdate()">
+          <i class="fa-solid fa-rotate-right"></i> Update & Reload
+        </button>
+        <a id="downloadReleaseBtn" href="https://github.com/nimesh-kavindya/FinPulse-Expense-Tracker/releases/latest" target="_blank" class="btn btn-sm btn-outline">
+          <i class="fa-solid fa-download"></i> APK / Release
+        </a>
+        <button onclick="dismissUpdateBanner()" class="update-banner-close" title="Dismiss Update Banner">&times;</button>
       </div>
     </div>
-  </div>
-
-  <!-- Update Notification Banner (GitHub Release Link එක සමඟ) -->
-  <div id="updateBanner"
-    style="display: none; background: #0f172a; color: #fff; padding: 12px 20px; text-align: center; position: fixed; bottom: 0; left: 0; width: 100%; z-index: 9999; box-shadow: 0 -4px 12px rgba(0,0,0,0.15);">
-    <span style="font-size: 14px; margin-right: 15px;">🚀 New version of FinPulse is available!</span>
-    <a id="downloadUpdateBtn"
-      href="https://github.com/nimesh-kavindya/FinPulse-Expense-Tracker/releases/download/v1.0/FinPulse.apk"
-      target="_blank"
-      style="background: #10b981; color: white; padding: 6px 14px; border-radius: 6px; text-decoration: none; font-weight: bold; font-size: 13px;">Update
-      Now</a>
-    <button onclick="document.getElementById('updateBanner').style.display='none'"
-      style="background: transparent; border: none; color: #94a3b8; font-size: 16px; margin-left: 15px; cursor: pointer;">&times;</button>
   </div>
 
 </body>
