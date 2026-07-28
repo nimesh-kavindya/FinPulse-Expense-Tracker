@@ -199,7 +199,7 @@
       <div class="header-actions" style="margin-left: auto; display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
         <!-- Version Check Badge -->
         <button id="versionBadgeBtn" class="version-badge-btn" title="Check for FinPulse App Updates" onclick="checkAppVersion(true)">
-          <i class="fa-solid fa-code-branch"></i> <span id="appVersionText">v1.0.2</span>
+          <i class="fa-solid fa-code-branch"></i> <span id="appVersionText">v1.0.3</span>
         </button>
 
         <!-- Theme Toggle Button -->
@@ -230,8 +230,26 @@
       </div>
     </header>
 
-    <!-- Main Dashboard Grid -->
-    <main class="dashboard-grid">
+    <!-- Module View Switcher Bar -->
+    <div class="view-navigation-bar glass-card" style="margin-top: 1rem; padding: 0.6rem 1rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap;">
+      <div class="view-nav-tabs" style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+        <button type="button" id="navDashboardBtn" class="view-nav-btn active">
+          <i class="fa-solid fa-chart-pie"></i> <span>Overview & Transactions</span>
+        </button>
+        <button type="button" id="navFdLoanBtn" class="view-nav-btn">
+          <i class="fa-solid fa-building-columns"></i> <span>FD & Loan Tracker</span>
+          <span class="badge badge-indigo" style="font-size: 0.7rem; padding: 0.15rem 0.45rem;">New</span>
+        </button>
+      </div>
+      <div class="view-nav-meta" style="font-size: 0.82rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.5rem;">
+        <i class="fa-solid fa-vault" style="color: var(--accent-indigo);"></i>
+        <span id="navMetaText">FinPulse Financial Workspace</span>
+      </div>
+    </div>
+
+    <!-- Main Dashboard Section -->
+    <div id="dashboardViewSection">
+      <main class="dashboard-grid">
 
       <!-- Top Summary Metrics Cards -->
       <section class="summary-cards">
@@ -499,6 +517,400 @@
       </section>
 
     </main>
+    </div>
+
+    <!-- FD & Loan Tracker Section -->
+    <section id="fdLoanViewSection" class="fd-loan-module hidden" style="margin-top: 1.25rem; display: flex; flex-direction: column; gap: 1.5rem;">
+      <!-- FD & Loan Top Summary Metrics Cards -->
+      <div class="summary-cards">
+        <!-- Total FD Assets -->
+        <div class="glass-card metric-card">
+          <div class="metric-icon" style="background: rgba(16, 185, 129, 0.15); color: #10b981;">
+            <i class="fa-solid fa-piggy-bank"></i>
+          </div>
+          <div class="metric-details">
+            <span class="metric-title">Total FD Assets</span>
+            <h2 id="totalFdAssetsVal">Rs. 0.00</h2>
+            <span class="metric-status positive"><i class="fa-solid fa-arrow-up-right"></i> Fixed Deposits Portfolio</span>
+          </div>
+        </div>
+
+        <!-- Total Loan Liabilities -->
+        <div class="glass-card metric-card">
+          <div class="metric-icon" style="background: rgba(239, 68, 68, 0.15); color: #ef4444;">
+            <i class="fa-solid fa-hand-holding-dollar"></i>
+          </div>
+          <div class="metric-details">
+            <span class="metric-title">Total Loan Liabilities</span>
+            <h2 id="totalLoanLiabilitiesVal">Rs. 0.00</h2>
+            <span class="metric-status negative"><i class="fa-solid fa-arrow-down-left"></i> Principal Outstanding</span>
+          </div>
+        </div>
+
+        <!-- Net Monthly Passive Impact -->
+        <div class="glass-card metric-card">
+          <div class="metric-icon" style="background: rgba(99, 102, 241, 0.15); color: #6366f1;">
+            <i class="fa-solid fa-scale-balanced"></i>
+          </div>
+          <div class="metric-details">
+            <span class="metric-title">Monthly FD Interest vs Loan EMIs</span>
+            <h2 id="netFdLoanFlowVal">Rs. 0.00 / mo</h2>
+            <span class="metric-status" id="netFdLoanFlowStatus"><i class="fa-solid fa-circle-info"></i> Monthly Net Cashflow Impact</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sub-tab Switcher: Loans vs Fixed Deposits -->
+      <div class="glass-card" style="padding: 0.75rem 1rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem;">
+        <div class="subnav-tabs" style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+          <button type="button" id="subtabLoansBtn" class="subnav-btn active">
+            <i class="fa-solid fa-calculator"></i> Loan Amortization Tracker
+          </button>
+          <button type="button" id="subtabFdsBtn" class="subnav-btn">
+            <i class="fa-solid fa-coins"></i> Fixed Deposit (FD) Tracker
+          </button>
+        </div>
+        <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+          <span style="font-size: 0.8rem; color: var(--text-muted);">
+            <i class="fa-solid fa-shield-halved" style="color: #10b981;"></i> Auto-syncs to Budget & Cash Balance
+          </span>
+          <button type="button" id="clearFdLoanDataBtn" class="btn btn-sm" style="font-size: 0.78rem; padding: 0.35rem 0.75rem; border-radius: var(--radius-md); display: inline-flex; align-items: center; gap: 0.35rem; color: #f43f5e; border: 1px solid rgba(244, 63, 94, 0.3); background: rgba(244, 63, 94, 0.1); cursor: pointer; font-weight: 600; transition: all 0.2s ease;">
+            <i class="fa-solid fa-trash-can"></i> Clear FD & Loan Data
+          </button>
+        </div>
+      </div>
+
+      <!-- Loan Tracker View Container -->
+      <div id="loanTrackerContainer" class="module-tab-content">
+        <!-- Smart Loan Alert Banner Container -->
+        <div id="loanAlertsContainer" class="smart-alert-container"></div>
+
+        <div class="fd-loan-grid">
+          <!-- Left Column: Add New Loan Form (lg:col-span-5) -->
+          <div class="fd-loan-left-col" style="display: flex; flex-direction: column; gap: 1.25rem;">
+            <!-- Add Loan Form -->
+            <div class="glass-card form-card rounded-2xl" style="padding: 1.5rem;">
+              <div class="card-header">
+                <h3><i class="fa-solid fa-hand-holding-hand" style="color: var(--accent-indigo);"></i> Add Loan Facility</h3>
+                <p>Calculate amortization schedule & track payments</p>
+              </div>
+              <form id="addLoanForm">
+                <div class="form-group">
+                  <label for="loanTitle">Loan Title / Facility Name</label>
+                  <div class="input-wrapper">
+                    <i class="fa-solid fa-tag input-icon"></i>
+                    <input type="text" id="loanTitle" placeholder="e.g. Vehicle Loan, Home Loan" required maxlength="40">
+                  </div>
+                </div>
+
+                <div class="form-row">
+                  <div class="form-group">
+                    <label for="loanPrincipal">Principal Amount (<span class="loanCurrSpan">LKR</span>)</label>
+                    <div class="input-wrapper">
+                      <span class="input-icon loanCurrIcon" style="font-weight: 700; font-size: 0.85rem;">Rs.</span>
+                      <input type="number" id="loanPrincipal" placeholder="500000" min="1000" step="100" required>
+                    </div>
+                  </div>
+
+                  <div class="form-group">
+                    <label for="loanRate">Annual Rate (%)</label>
+                    <div class="input-wrapper">
+                      <i class="fa-solid fa-percent input-icon"></i>
+                      <input type="number" id="loanRate" placeholder="12.0" min="0.1" max="100" step="0.1" required>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="form-row">
+                  <div class="form-group">
+                    <label for="loanTenure">Tenure (Months)</label>
+                    <div class="input-wrapper">
+                      <i class="fa-solid fa-calendar-range input-icon"></i>
+                      <input type="number" id="loanTenure" placeholder="24" min="1" max="360" step="1" required>
+                    </div>
+                  </div>
+
+                  <div class="form-group">
+                    <label for="loanStartDate">Start Date</label>
+                    <div class="input-wrapper">
+                      <i class="fa-solid fa-calendar-day input-icon"></i>
+                      <input type="date" id="loanStartDate" required>
+                    </div>
+                  </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-block">
+                  <i class="fa-solid fa-calculator"></i> Calculate & Save Loan
+                </button>
+              </form>
+            </div>
+          </div>
+
+          <!-- Right Column: Active Loans List & Amortization Schedule (lg:col-span-7) -->
+          <div class="fd-loan-right-col" style="display: flex; flex-direction: column; gap: 1.25rem;">
+            <!-- Saved Loans List Card -->
+            <div class="glass-card rounded-2xl" style="padding: 1.5rem;">
+              <div class="card-header" style="display: flex; align-items: center; justify-content: space-between;">
+                <h3><i class="fa-solid fa-folder-open" style="color: var(--accent-indigo);"></i> Your Active Loans</h3>
+                <span id="savedLoansCount" class="count-badge">0 Loans</span>
+              </div>
+              <div id="savedLoansList" style="margin-top: 1rem;">
+                <!-- Dynamically populated in app.js -->
+              </div>
+            </div>
+
+            <!-- Loan Repayment Analytics Chart Card -->
+            <div class="glass-card rounded-2xl" id="loanChartCard" style="padding: 1.5rem;">
+              <div class="card-header" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem;">
+                <div>
+                  <h3 id="loanChartTitle"><i class="fa-solid fa-chart-column" style="color: var(--accent-indigo);"></i> Loan Repayment Analytics</h3>
+                  <p id="loanChartSubtitle" style="margin: 0.2rem 0 0 0; font-size: 0.8rem; color: var(--text-muted);">
+                    Principal vs. Interest distribution & remaining balance over tenure
+                  </p>
+                </div>
+                <div class="chart-toggle-group">
+                  <button type="button" id="loanChartMonthlyBtn" class="chart-toggle-btn active">Monthly</button>
+                  <button type="button" id="loanChartYearlyBtn" class="chart-toggle-btn">Yearly</button>
+                </div>
+              </div>
+
+              <div id="loanChartEmptyState" class="empty-state" style="padding: 2.5rem 1rem;">
+                <div class="empty-icon"><i class="fa-solid fa-chart-area"></i></div>
+                <p class="empty-title">No Active Loan Selected</p>
+                <p class="empty-subtitle">Select or calculate a loan to view monthly and yearly repayment analytical charts.</p>
+              </div>
+
+              <div id="loanChartCanvasWrapper" class="hidden" style="position: relative; height: 280px; width: 100%; margin-top: 1rem;">
+                <canvas id="loanAnalyticsChartCanvas"></canvas>
+              </div>
+            </div>
+
+            <!-- Amortization Schedule Card -->
+            <div class="glass-card rounded-2xl" id="amortizationScheduleCard" style="padding: 1.5rem;">
+              <div class="card-header" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem;">
+                <div>
+                  <h3 id="amortScheduleTitle"><i class="fa-solid fa-table-list" style="color: var(--accent-indigo);"></i> Amortization Schedule</h3>
+                  <p id="amortScheduleSubtitle" style="margin: 0.2rem 0 0 0; font-size: 0.8rem; color: var(--text-muted);">
+                    Select or add a loan to view month-by-month repayment breakdown
+                  </p>
+                </div>
+                <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+                  <button type="button" id="downloadLoanPdfBtn" class="btn btn-sm" style="font-size: 0.78rem; padding: 0.4rem 0.85rem; border-radius: var(--radius-md); display: inline-flex; align-items: center; gap: 0.4rem; color: #ffffff; background: linear-gradient(135deg, #6366f1, #4f46e5); border: none; font-weight: 600; cursor: pointer; box-shadow: 0 2px 8px rgba(99, 102, 241, 0.25); transition: all 0.2s ease;">
+                    <i class="fa-solid fa-file-pdf"></i> Download Loan Schedule (PDF)
+                  </button>
+                  <div id="selectedLoanSummaryBadges" style="display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap;">
+                    <!-- EMI badge, total interest badge -->
+                  </div>
+                </div>
+              </div>
+
+              <!-- Schedule Empty State -->
+              <div id="amortEmptyState" class="empty-state" style="padding: 3rem 1rem;">
+                <div class="empty-icon"><i class="fa-solid fa-calculator"></i></div>
+                <p class="empty-title">No active loans or fixed deposits found</p>
+                <p class="empty-subtitle">Fill out the form on the left to add a loan and generate its interactive amortization schedule.</p>
+              </div>
+
+              <!-- Interactive Amortization Table Container -->
+              <div id="amortTableContainer" class="hidden" style="margin-top: 1rem; overflow-x: auto;">
+                <!-- Financial Overview Banner for Selected Loan -->
+                <div id="loanOverviewBanner" class="glass-card rounded-2xl" style="margin-bottom: 1rem; padding: 1.25rem; background: rgba(99, 102, 241, 0.08); border: 1px solid rgba(99, 102, 241, 0.2);">
+                  <!-- Monthly EMI, Total Interest, Total Payable, Repayment Progress -->
+                </div>
+
+                <div class="table-responsive" style="max-height: 480px; overflow-y: auto;">
+                  <table class="schedule-table">
+                    <thead>
+                      <tr>
+                        <th>Month #</th>
+                        <th>DueDate</th>
+                        <th>EMI Amount</th>
+                        <th>Interest Paid</th>
+                        <th>Principal Paid</th>
+                        <th>Remaining Balance</th>
+                        <th style="text-align: center;">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody id="amortTableBody">
+                      <!-- Amortization rows generated by app.js -->
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Fixed Deposit Tracker View Container -->
+      <div id="fdTrackerContainer" class="module-tab-content hidden">
+        <!-- Smart FD Alert Banner Container -->
+        <div id="fdAlertsContainer" class="smart-alert-container"></div>
+
+        <div class="fd-loan-grid">
+          <!-- Left Column: Add New FD Form (lg:col-span-5) -->
+          <div class="fd-loan-left-col" style="display: flex; flex-direction: column; gap: 1.25rem;">
+            <!-- Add Fixed Deposit Form -->
+            <div class="glass-card form-card rounded-2xl" style="padding: 1.5rem;">
+              <div class="card-header">
+                <h3><i class="fa-solid fa-building-columns" style="color: #10b981;"></i> Create Fixed Deposit (FD)</h3>
+                <p>Calculate maturity returns & track interest earnings</p>
+              </div>
+              <form id="addFdForm">
+                <div class="form-group">
+                  <label for="fdTitle">FD Name / Financial Institution</label>
+                  <div class="input-wrapper">
+                    <i class="fa-solid fa-building input-icon"></i>
+                    <input type="text" id="fdTitle" placeholder="e.g. Commercial Bank 12-Mo FD" required maxlength="40">
+                  </div>
+                </div>
+
+                <div class="form-row">
+                  <div class="form-group">
+                    <label for="fdDeposit">Deposit Amount (<span class="fdCurrSpan">LKR</span>)</label>
+                    <div class="input-wrapper">
+                      <span class="input-icon fdCurrIcon" style="font-weight: 700; font-size: 0.85rem;">Rs.</span>
+                      <input type="number" id="fdDeposit" placeholder="1000000" min="1000" step="100" required>
+                    </div>
+                  </div>
+
+                  <div class="form-group">
+                    <label for="fdRate">Annual Interest Rate (%)</label>
+                    <div class="input-wrapper">
+                      <i class="fa-solid fa-percent input-icon"></i>
+                      <input type="number" id="fdRate" placeholder="10.5" min="0.1" max="100" step="0.1" required>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="form-row">
+                  <div class="form-group">
+                    <label for="fdTenure">Tenure (Months)</label>
+                    <div class="input-wrapper">
+                      <i class="fa-solid fa-calendar-range input-icon"></i>
+                      <input type="number" id="fdTenure" placeholder="12" min="1" max="120" step="1" required>
+                    </div>
+                  </div>
+
+                  <div class="form-group">
+                    <label for="fdPayoutFreq">Interest Payout</label>
+                    <div class="input-wrapper">
+                      <i class="fa-solid fa-clock-rotate-left input-icon"></i>
+                      <select id="fdPayoutFreq" required>
+                        <option value="monthly">Monthly Interest Payout</option>
+                        <option value="maturity">Cumulative at Maturity</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <label for="fdStartDate">Start Date</label>
+                  <div class="input-wrapper">
+                    <i class="fa-solid fa-calendar-day input-icon"></i>
+                    <input type="date" id="fdStartDate" required>
+                  </div>
+                </div>
+
+                <button type="submit" class="btn btn-block" style="background: linear-gradient(135deg, #10b981, #059669); color: white; border: none; font-weight: 700;">
+                  <i class="fa-solid fa-piggy-bank"></i> Create Fixed Deposit
+                </button>
+              </form>
+            </div>
+          </div>
+
+          <!-- Right Column: Active FDs List & Monthly Interest Earnings Tracker (lg:col-span-7) -->
+          <div class="fd-loan-right-col" style="display: flex; flex-direction: column; gap: 1.25rem;">
+            <!-- Active FDs List Card -->
+            <div class="glass-card rounded-2xl" style="padding: 1.5rem;">
+              <div class="card-header" style="display: flex; align-items: center; justify-content: space-between;">
+                <h3><i class="fa-solid fa-coins" style="color: #10b981;"></i> Your Active FDs</h3>
+                <span id="savedFdsCount" class="count-badge">0 FDs</span>
+              </div>
+              <div id="savedFdsList" style="margin-top: 1rem;">
+                <!-- Dynamically populated in app.js -->
+              </div>
+            </div>
+
+            <!-- FD Growth & Yield Analytics Chart Card -->
+            <div class="glass-card rounded-2xl" id="fdChartCard" style="padding: 1.5rem;">
+              <div class="card-header" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem;">
+                <div>
+                  <h3 id="fdChartTitle"><i class="fa-solid fa-chart-line" style="color: #10b981;"></i> FD Growth & Yield Analytics</h3>
+                  <p id="fdChartSubtitle" style="margin: 0.2rem 0 0 0; font-size: 0.8rem; color: var(--text-muted);">
+                    Interest yield earnings & total deposit growth progression
+                  </p>
+                </div>
+                <div class="chart-toggle-group">
+                  <button type="button" id="fdChartMonthlyBtn" class="chart-toggle-btn emerald active">Monthly</button>
+                  <button type="button" id="fdChartYearlyBtn" class="chart-toggle-btn emerald">Yearly</button>
+                </div>
+              </div>
+
+              <div id="fdChartEmptyState" class="empty-state" style="padding: 2.5rem 1rem;">
+                <div class="empty-icon"><i class="fa-solid fa-chart-line"></i></div>
+                <p class="empty-title">No Active Fixed Deposit Selected</p>
+                <p class="empty-subtitle">Select or create a fixed deposit to view monthly and yearly interest yield analytics.</p>
+              </div>
+
+              <div id="fdChartCanvasWrapper" class="hidden" style="position: relative; height: 280px; width: 100%; margin-top: 1rem;">
+                <canvas id="fdAnalyticsChartCanvas"></canvas>
+              </div>
+            </div>
+
+            <!-- FD Earnings Card -->
+            <div class="glass-card rounded-2xl" id="fdEarningsCard" style="padding: 1.5rem;">
+              <div class="card-header" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem;">
+                <div>
+                  <h3 id="fdEarningsTitle"><i class="fa-solid fa-chart-line" style="color: #10b981;"></i> Monthly Interest Earnings Tracker</h3>
+                  <p id="fdEarningsSubtitle" style="margin: 0.2rem 0 0 0; font-size: 0.8rem; color: var(--text-muted);">
+                    Select an active fixed deposit to view monthly payout schedule & collect interest
+                  </p>
+                </div>
+                <div>
+                  <button type="button" id="downloadFdPdfBtn" class="btn btn-sm" style="font-size: 0.78rem; padding: 0.4rem 0.85rem; border-radius: var(--radius-md); display: inline-flex; align-items: center; gap: 0.4rem; color: #ffffff; background: linear-gradient(135deg, #10b981, #059669); border: none; font-weight: 600; cursor: pointer; box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25); transition: all 0.2s ease;">
+                    <i class="fa-solid fa-file-pdf"></i> Download FD Report (PDF)
+                  </button>
+                </div>
+              </div>
+
+              <!-- FD Empty State -->
+              <div id="fdEmptyState" class="empty-state" style="padding: 3rem 1rem;">
+                <div class="empty-icon"><i class="fa-solid fa-building-columns"></i></div>
+                <p class="empty-title">No active loans or fixed deposits found</p>
+                <p class="empty-subtitle">Fill out the form on the left to create a fixed deposit and track monthly interest distribution.</p>
+              </div>
+
+              <!-- FD Earnings Table Container -->
+              <div id="fdTableContainer" class="hidden" style="margin-top: 1rem; overflow-x: auto;">
+                <!-- Financial Overview Banner for Selected FD -->
+                <div id="fdOverviewBanner" class="glass-card rounded-2xl" style="margin-bottom: 1rem; padding: 1.25rem; background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.2);">
+                  <!-- Deposit Amount, Est Monthly Interest, Total Maturity Value, Total Collected -->
+                </div>
+
+                <div class="table-responsive" style="max-height: 480px; overflow-y: auto;">
+                  <table class="schedule-table">
+                    <thead>
+                      <tr>
+                        <th>Month #</th>
+                        <th>Payout Date</th>
+                        <th>Interest Earned</th>
+                        <th>Cumulative Interest</th>
+                        <th>Principal Value</th>
+                        <th style="text-align: center;">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody id="fdTableBody">
+                      <!-- FD Rows generated by app.js -->
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
 
     <!-- Footer -->
     <footer class="app-footer">
@@ -555,12 +967,12 @@
           <i class="fa-solid fa-triangle-exclamation"></i>
         </div>
         <div>
-          <h3>Clear All Data?</h3>
-          <p class="modal-subtitle">Permanent action</p>
+          <h3>Clear Home Data?</h3>
+          <p class="modal-subtitle">Transactions & Budget Reset</p>
         </div>
       </div>
       <p class="modal-body">
-        Are you sure you want to delete all transaction records from local storage? This action cannot be undone.
+        Are you sure you want to delete all home transaction records from local storage? Your active FD and Loan records will remain untouched.
       </p>
       <div class="modal-actions">
         <button id="cancelModalBtn" class="btn btn-outline">Cancel</button>
@@ -619,7 +1031,7 @@
           <i class="fa-solid fa-arrows-rotate fa-spin-pulse"></i>
         </div>
         <div>
-          <h4 id="updateBannerTitle">🚀 New Update Available (<span id="latestVersionText">v1.0.2</span>)</h4>
+          <h4 id="updateBannerTitle">🚀 New Update Available (<span id="latestVersionText">v1.0.3</span>)</h4>
           <p id="updateBannerNotes">A newer version of FinPulse is ready with performance improvements & offline capabilities.</p>
         </div>
       </div>

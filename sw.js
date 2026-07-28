@@ -4,7 +4,7 @@
  * and immediate activation via SKIP_WAITING for seamless version updates.
  */
 
-const CACHE_NAME = 'finpulse-cache-v1.0.2';
+const CACHE_NAME = 'finpulse-cache-v1.0.3';
 
 const ASSETS_TO_CACHE = [
   './',

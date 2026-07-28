@@ -2348,3 +2348,581 @@ body.light-theme .update-banner-close:hover {
   color: #0f172a;
 }
 
+/* ==========================================================================
+   FD & Loan Tracker Navigation & Module Styling
+   ========================================================================== */
+
+/* Main View Navigation Tabs */
+.view-nav-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--text-secondary);
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-md);
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: all var(--transition-fast);
+}
+
+.view-nav-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-primary);
+}
+
+.view-nav-btn.active {
+  background: linear-gradient(135deg, var(--accent-indigo), var(--accent-purple));
+  color: #ffffff;
+  border-color: rgba(99, 102, 241, 0.5);
+  box-shadow: 0 4px 15px rgba(99, 102, 241, 0.35);
+}
+
+body.light-theme .view-nav-btn {
+  background: rgba(0, 0, 0, 0.04);
+  border-color: rgba(0, 0, 0, 0.08);
+  color: #475569;
+}
+
+body.light-theme .view-nav-btn.active {
+  background: linear-gradient(135deg, #4f46e5, #7c3aed);
+  color: #ffffff;
+}
+
+/* Sub-nav Tabs (Loans vs FDs) */
+.subnav-btn {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--text-muted);
+  padding: 0.45rem 0.9rem;
+  border-radius: var(--radius-md);
+  font-size: 0.83rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  transition: all var(--transition-fast);
+}
+
+.subnav-btn:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.subnav-btn.active {
+  background: rgba(99, 102, 241, 0.2);
+  border-color: rgba(99, 102, 241, 0.4);
+  color: #818cf8;
+}
+
+body.light-theme .subnav-btn {
+  background: rgba(0, 0, 0, 0.03);
+  border-color: rgba(0, 0, 0, 0.06);
+  color: #64748b;
+}
+
+body.light-theme .subnav-btn.active {
+  background: rgba(79, 70, 229, 0.12);
+  border-color: rgba(79, 70, 229, 0.3);
+  color: #4f46e5;
+}
+
+/* Item List Cards (Saved Loans & FDs) */
+.facility-card-item {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 0.85rem 1rem;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.facility-card-item:hover {
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(99, 102, 241, 0.3);
+  transform: translateY(-1px);
+}
+
+.facility-card-item.selected {
+  border-color: var(--accent-indigo);
+  background: rgba(99, 102, 241, 0.12);
+}
+
+body.light-theme .facility-card-item {
+  background: rgba(255, 255, 255, 0.8);
+  border-color: rgba(226, 232, 240, 0.8);
+}
+
+body.light-theme .facility-card-item.selected {
+  background: rgba(238, 242, 255, 0.9);
+  border-color: #6366f1;
+}
+
+/* Schedule Table */
+.schedule-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 0.83rem;
+}
+
+.schedule-table th {
+  position: sticky;
+  top: 0;
+  background: var(--bg-dark);
+  color: var(--text-muted);
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 0.72rem;
+  letter-spacing: 0.5px;
+  padding: 0.75rem 0.85rem;
+  border-bottom: 1px solid var(--border-color);
+  text-align: left;
+  z-index: 10;
+}
+
+body.light-theme .schedule-table th {
+  background: #f8fafc;
+  color: #64748b;
+}
+
+.schedule-table td {
+  padding: 0.7rem 0.85rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+
+body.light-theme .schedule-table td {
+  border-bottom-color: rgba(0, 0, 0, 0.05);
+  color: #1e293b;
+}
+
+.schedule-table tr:hover td {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+body.light-theme .schedule-table tr:hover td {
+  background: rgba(0, 0, 0, 0.02);
+}
+
+.schedule-table tr.paid-row td {
+  background: rgba(16, 185, 129, 0.06);
+}
+
+/* Status & Action Buttons inside Schedule Table */
+.btn-action-paid {
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  color: #10b981;
+  border-radius: var(--radius-sm);
+  padding: 0.3rem 0.65rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  transition: all var(--transition-fast);
+}
+
+.btn-action-paid:hover {
+  background: rgba(16, 185, 129, 0.25);
+}
+
+.btn-action-pending {
+  background: rgba(99, 102, 241, 0.15);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  color: #818cf8;
+  border-radius: var(--radius-sm);
+  padding: 0.3rem 0.65rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  transition: all var(--transition-fast);
+}
+
+.btn-action-pending:hover {
+  background: rgba(99, 102, 241, 0.3);
+  box-shadow: 0 0 10px rgba(99, 102, 241, 0.25);
+}
+
+/* Custom Progress Bar */
+.custom-progress-bar {
+  width: 100%;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  overflow: hidden;
+  margin-top: 0.4rem;
+}
+
+body.light-theme .custom-progress-bar {
+  background: rgba(0, 0, 0, 0.08);
+}
+
+.custom-progress-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.4s ease-out;
+}
+
+.custom-progress-fill.indigo {
+  background: linear-gradient(90deg, #6366f1, #a855f7);
+}
+
+.custom-progress-fill.emerald {
+  background: linear-gradient(90deg, #10b981, #059669);
+}
+
+/* ==========================================================================
+   FD & Loan Section Grid Layout (lg:col-span-5 & lg:col-span-7)
+   ========================================================================== */
+.rounded-2xl {
+  border-radius: 1.25rem !important; /* 20px rounded corners */
+}
+
+.fd-loan-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+  align-items: start;
+}
+
+@media (min-width: 1024px) {
+  .fd-loan-grid {
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    gap: 1.5rem;
+  }
+
+  .fd-loan-left-col {
+    grid-column: span 5 / span 5;
+  }
+
+  .fd-loan-right-col {
+    grid-column: span 7 / span 7;
+  }
+}
+
+.facility-card-item {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-color);
+  border-radius: 1rem;
+  padding: 1.1rem 1.25rem;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+body.light-theme .facility-card-item {
+  background: #ffffff;
+  border-color: rgba(0, 0, 0, 0.08);
+}
+
+.facility-card-item:hover {
+  border-color: rgba(99, 102, 241, 0.4);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+}
+
+.facility-card-item.selected {
+  border-color: var(--accent-indigo);
+  background: rgba(99, 102, 241, 0.08);
+  box-shadow: 0 0 15px rgba(99, 102, 241, 0.2);
+}
+
+body.light-theme .facility-card-item.selected {
+  background: rgba(99, 102, 241, 0.05);
+  border-color: var(--accent-indigo);
+}
+
+/* Overview Banner Stats Grid */
+.summary-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 0.85rem;
+  width: 100%;
+}
+
+.summary-stat-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 0.75rem 0.9rem;
+  border-radius: 0.85rem;
+}
+
+body.light-theme .summary-stat-card {
+  background: #ffffff;
+  border-color: rgba(0, 0, 0, 0.08);
+}
+
+/* Chart Toggle Buttons */
+.chart-toggle-group {
+  display: flex;
+  align-items: center;
+  background: rgba(15, 23, 42, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  padding: 3px;
+  gap: 2px;
+}
+
+body.light-theme .chart-toggle-group {
+  background: rgba(241, 245, 249, 0.9);
+  border-color: rgba(0, 0, 0, 0.08);
+}
+
+.chart-toggle-btn {
+  background: transparent;
+  color: var(--text-muted);
+  border: none;
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 0.35rem 0.85rem;
+  border-radius: 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.chart-toggle-btn:hover {
+  color: var(--text-main);
+}
+
+.chart-toggle-btn.active {
+  background: linear-gradient(135deg, #6366f1, #4f46e5);
+  color: #ffffff !important;
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+}
+
+.chart-toggle-btn.emerald.active {
+  background: linear-gradient(135deg, #10b981, #059669);
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+}
+
+/* Smart Alert Banners */
+.smart-alert-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+  width: 100%;
+}
+
+.smart-alert-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.9rem 1.25rem;
+  border-radius: 1rem;
+  border: 1px solid transparent;
+  font-size: 0.88rem;
+  transition: all 0.25s ease;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  animation: slideInDown 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes slideInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Color Themes for Alerts */
+.smart-alert-card.alert-amber {
+  background: rgba(245, 158, 11, 0.12);
+  border-color: rgba(245, 158, 11, 0.35);
+  color: #fcd34d;
+}
+body.light-theme .smart-alert-card.alert-amber {
+  background: #fef3c7;
+  border-color: #fde68a;
+  color: #92400e;
+}
+
+.smart-alert-card.alert-emerald {
+  background: rgba(16, 185, 129, 0.12);
+  border-color: rgba(16, 185, 129, 0.35);
+  color: #34d399;
+}
+body.light-theme .smart-alert-card.alert-emerald {
+  background: #d1fae5;
+  border-color: #a7f3d0;
+  color: #065f46;
+}
+
+.smart-alert-card.alert-rose {
+  background: rgba(244, 63, 94, 0.12);
+  border-color: rgba(244, 63, 94, 0.35);
+  color: #fb7185;
+}
+body.light-theme .smart-alert-card.alert-rose {
+  background: #ffe4e6;
+  border-color: #fecdd3;
+  color: #9f1239;
+}
+
+.smart-alert-card.alert-indigo {
+  background: rgba(99, 102, 241, 0.12);
+  border-color: rgba(99, 102, 241, 0.35);
+  color: #a5b4fc;
+}
+body.light-theme .smart-alert-card.alert-indigo {
+  background: #e0e7ff;
+  border-color: #c7d2fe;
+  color: #3730a3;
+}
+
+.smart-alert-icon {
+  font-size: 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.smart-alert-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.smart-alert-title {
+  font-weight: 700;
+  font-size: 0.9rem;
+  line-height: 1.3;
+}
+
+.smart-alert-subtitle {
+  font-size: 0.8rem;
+  opacity: 0.9;
+}
+
+.smart-alert-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.smart-alert-btn {
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 0.35rem 0.75rem;
+  border-radius: 0.6rem;
+  border: 1px solid currentColor;
+  background: rgba(255, 255, 255, 0.12);
+  color: inherit;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.smart-alert-btn:hover {
+  background: rgba(255, 255, 255, 0.25);
+  transform: translateY(-1px);
+}
+
+body.light-theme .smart-alert-btn {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+body.light-theme .smart-alert-btn:hover {
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.smart-alert-dismiss {
+  background: transparent;
+  border: none;
+  color: inherit;
+  font-size: 0.95rem;
+  opacity: 0.7;
+  cursor: pointer;
+  padding: 0.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.2s ease;
+}
+
+.smart-alert-dismiss:hover {
+  opacity: 1;
+}
+
+/* Badge Pills for Facility Cards */
+.alert-badge-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.2rem 0.55rem;
+  border-radius: 9999px;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.alert-badge-pill.badge-emerald {
+  background: rgba(16, 185, 129, 0.2);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.2);
+}
+body.light-theme .alert-badge-pill.badge-emerald {
+  background: #d1fae5;
+  color: #065f46;
+  border-color: #a7f3d0;
+}
+
+.alert-badge-pill.badge-amber {
+  background: rgba(245, 158, 11, 0.2);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.2);
+}
+body.light-theme .alert-badge-pill.badge-amber {
+  background: #fef3c7;
+  color: #92400e;
+  border-color: #fde68a;
+}
+
+.alert-badge-pill.badge-rose {
+  background: rgba(244, 63, 94, 0.2);
+  color: #fb7185;
+  border: 1px solid rgba(244, 63, 94, 0.4);
+  box-shadow: 0 0 8px rgba(244, 63, 94, 0.2);
+}
+body.light-theme .alert-badge-pill.badge-rose {
+  background: #ffe4e6;
+  color: #9f1239;
+  border-color: #fecdd3;
+}
+
+.alert-badge-pill.badge-indigo {
+  background: rgba(99, 102, 241, 0.2);
+  color: #a5b4fc;
+  border: 1px solid rgba(99, 102, 241, 0.4);
+  box-shadow: 0 0 8px rgba(99, 102, 241, 0.2);
+}
+body.light-theme .alert-badge-pill.badge-indigo {
+  background: #e0e7ff;
+  color: #3730a3;
+  border-color: #c7d2fe;
+}
+
+

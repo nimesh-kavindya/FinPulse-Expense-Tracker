@@ -1,6 +1,6 @@
 {
-  "version": "1.0.2",
-  "releaseDate": "2026-07-27",
-  "releaseNotes": "PWA offline support, Service Worker background caching, and live In-App version update checking.",
+  "version": "1.0.3",
+  "releaseDate": "2026-07-28",
+  "releaseNotes": "FD & Loan smart maturity alerts, payment due notifications, and interactive analytics charts.",
   "downloadUrl": "https://github.com/nimesh-kavindya/FinPulse-Expense-Tracker/releases/latest"
 }
