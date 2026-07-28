@@ -2578,6 +2578,33 @@ body.light-theme .schedule-table tr:hover td {
   background: rgba(16, 185, 129, 0.06);
 }
 
+/* Amortization schedule table row entry and state update animations */
+@keyframes amortRowAppear {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.schedule-table tbody tr {
+  animation: amortRowAppear 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+  will-change: transform, opacity;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+
+/* Extra hover state enhancement */
+.schedule-table tr:hover td {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+body.light-theme .schedule-table tr:hover td {
+  background: rgba(0, 0, 0, 0.03);
+}
+
 /* Status & Action Buttons inside Schedule Table */
 .btn-action-paid {
   background: rgba(16, 185, 129, 0.15);

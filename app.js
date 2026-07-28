@@ -846,7 +846,7 @@ function subscribeToUserTransactions(userId) {
     }
 
     if (items.length > 0 || snapshot.metadata.fromCache === false) {
-      transactions = items.filter(validateTransaction);
+      transactions = normalizeTransactions(items.filter(validateTransaction));
       saveLocalTransactionsCache();
       populateMonthFilter();
       renderApp();
@@ -898,6 +898,20 @@ function updateAmountLabelAndIcon(currency) {
   }
 }
 
+function normalizeTransactions(txs) {
+  if (!Array.isArray(txs)) return [];
+  return txs.map(t => {
+    if (t && typeof t === 'object' && t.description && typeof t.description === 'string') {
+      const descLower = t.description.toLowerCase();
+      const isLoanEmi = descLower.includes('loan emi') || descLower.includes('loan installment') || (t.id && String(t.id).startsWith('tx-loan-'));
+      if (isLoanEmi && t.category !== 'Other') {
+        return { ...t, category: 'Other' };
+      }
+    }
+    return t;
+  });
+}
+
 function validateTransaction(t) {
   return t &&
     typeof t === 'object' &&
@@ -909,28 +923,76 @@ function validateTransaction(t) {
     typeof t.date === 'string';
 }
 
+function mergeArraysById(arr1, arr2) {
+  const list1 = Array.isArray(arr1) ? arr1 : [];
+  const list2 = Array.isArray(arr2) ? arr2 : [];
+  // list1 (arr1, newer/active items) will overwrite list2 (arr2, older/stored items) in the map.
+  const merged = [...list2, ...list1];
+  const map = new Map();
+  merged.forEach(item => {
+    if (item && item.id) {
+      map.set(String(item.id).trim(), item);
+    }
+  });
+  return Array.from(map.values());
+}
+
 function loadLocalTransactionsCache() {
   try {
-    const stored = localStorage.getItem(HOME_DATA_STORAGE_KEY) || localStorage.getItem('finpulse_transactions_v1');
-    if (stored) {
-      const parsed = JSON.parse(stored);
-      if (Array.isArray(parsed)) {
-        transactions = parsed.filter(validateTransaction);
-        return;
+    let loadedTxs = [];
+    const stored1 = localStorage.getItem(HOME_DATA_STORAGE_KEY);
+    if (stored1) {
+      try {
+        const parsed1 = JSON.parse(stored1);
+        if (Array.isArray(parsed1)) {
+          loadedTxs = [...loadedTxs, ...parsed1];
+        }
+      } catch (err) {
+        console.error('Error parsing primary transactions key:', err);
       }
     }
+    const stored2 = localStorage.getItem('finpulse_transactions_v1');
+    if (stored2) {
+      try {
+        const parsed2 = JSON.parse(stored2);
+        if (Array.isArray(parsed2)) {
+          loadedTxs = [...loadedTxs, ...parsed2];
+        }
+      } catch (err) {
+        console.error('Error parsing fallback transactions key:', err);
+      }
+    }
+
+    // Merge safely with in-memory using spread syntax and deduplicating by ID
+    let combined = Array.isArray(transactions) ? [...transactions] : [];
+    combined = [...combined, ...loadedTxs];
+
+    // Filter, normalize, and deduplicate by ID
+    const validTxs = combined.filter(validateTransaction);
+    transactions = normalizeTransactions(mergeArraysById(transactions, validTxs));
   } catch (err) {
-    console.error('LocalStorage read error:', err);
+    console.error('LocalStorage loadLocalTransactionsCache error: Failed to parse/retrieve local transactions cache.', err);
+    if (!Array.isArray(transactions)) transactions = [];
+    
+    // Safely reset UI state to display empty list state
+    if (transactionCountEl) transactionCountEl.textContent = '0 Items';
+    if (transactionListEl) transactionListEl.innerHTML = '';
+    if (emptyListStateEl) emptyListStateEl.classList.remove('hidden');
   }
-  transactions = [];
 }
 
 function saveLocalTransactionsCache() {
   try {
+    transactions = normalizeTransactions(transactions);
     localStorage.setItem(HOME_DATA_STORAGE_KEY, JSON.stringify(transactions));
     localStorage.setItem('finpulse_transactions_v1', JSON.stringify(transactions));
   } catch (err) {
-    console.error('LocalStorage write error:', err);
+    console.error('LocalStorage write error occurred during saveLocalTransactionsCache: Failed to save active transactions to localStorage.', err);
+    
+    // Safely reset UI state to display empty list state
+    if (transactionCountEl) transactionCountEl.textContent = '0 Items';
+    if (transactionListEl) transactionListEl.innerHTML = '';
+    if (emptyListStateEl) emptyListStateEl.classList.remove('hidden');
   }
 }
 
@@ -979,28 +1041,63 @@ function getFilteredTransactions() {
   const selectedType = filterTypeSelect ? filterTypeSelect.value : 'all';
   const searchTerm = searchInput ? searchInput.value.trim().toLowerCase() : '';
 
-  return transactions.filter(t => {
-    const matchesMonth = selectedMonth === 'all' || getMonthKey(t.date) === selectedMonth;
-    const matchesCategory = selectedCategory === 'all' || t.category === selectedCategory;
-    const matchesType = selectedType === 'all' || t.type === selectedType;
-    const matchesSearch = t.description.toLowerCase().includes(searchTerm) ||
-      t.category.toLowerCase().includes(searchTerm) ||
-      t.amount.toString().includes(searchTerm);
+  // Safely fallback to an empty array if transactions is not an array
+  const activeTxs = Array.isArray(transactions) ? transactions : [];
+
+  return activeTxs.filter(t => {
+    // Check if the transaction item exists and is an object
+    if (!t || typeof t !== 'object') return false;
+
+    // Provide safe defaults for keys so that calling methods on them won't crash
+    const tDate = typeof t.date === 'string' ? t.date : '';
+    const tCategory = typeof t.category === 'string' ? t.category : 'Other';
+    const tType = typeof t.type === 'string' ? t.type : 'expense';
+    const tDescription = typeof t.description === 'string' ? t.description : '';
+    const tAmount = t.amount !== undefined && t.amount !== null ? t.amount : 0;
+
+    const matchesMonth = selectedMonth === 'all' || getMonthKey(tDate) === selectedMonth;
+    const matchesCategory = selectedCategory === 'all' || tCategory === selectedCategory;
+    const matchesType = selectedType === 'all' || tType === selectedType;
+    
+    const descLower = tDescription.toLowerCase();
+    const catLower = tCategory.toLowerCase();
+    const amtStr = tAmount.toString();
+    
+    const matchesSearch = descLower.includes(searchTerm) ||
+      catLower.includes(searchTerm) ||
+      amtStr.includes(searchTerm);
 
     return matchesMonth && matchesCategory && matchesType && matchesSearch;
   });
 }
 
 function renderApp() {
-  const activeMonth = filterMonthSelect ? filterMonthSelect.value : 'all';
-  const monthTransactions = transactions.filter(t => activeMonth === 'all' || getMonthKey(t.date) === activeMonth);
-  const filteredList = getFilteredTransactions();
+  try {
+    const activeMonth = filterMonthSelect ? filterMonthSelect.value : 'all';
+    
+    // Safely treat transactions as array and filter only valid entries
+    const safeTransactions = Array.isArray(transactions) ? transactions.filter(t => t && typeof t === 'object') : [];
+    
+    const monthTransactions = safeTransactions.filter(t => {
+      const tDate = typeof t.date === 'string' ? t.date : '';
+      return activeMonth === 'all' || getMonthKey(tDate) === activeMonth;
+    });
+    
+    const filteredList = getFilteredTransactions();
 
-  renderSummaryCards(monthTransactions);
-  renderTransactionList(filteredList);
-  updateChart(monthTransactions);
-  renderCategoryBudgets();
-  updateMonthlyFinancialChart();
+    renderSummaryCards(monthTransactions);
+    renderTransactionList(filteredList);
+    updateChart(monthTransactions);
+    renderCategoryBudgets();
+    updateMonthlyFinancialChart();
+
+    // Ensure FD & Loan top summaries update in real-time
+    renderFdLoanTopSummary();
+  } catch (err) {
+    console.error('Error occurred in renderApp:', err);
+    // Render an empty list safely if everything fails
+    renderTransactionList([]);
+  }
 }
 
 function renderSummaryCards(monthTransactions) {
@@ -1008,13 +1105,41 @@ function renderSummaryCards(monthTransactions) {
   let income = 0;
   let expenses = 0;
 
-  monthTransactions.forEach(t => {
+  const list = Array.isArray(monthTransactions) ? monthTransactions : [];
+
+  list.forEach(t => {
+    if (!t) return;
     const amt = parseFloat(t.amount) || 0;
     if (t.type === 'income') income += amt;
     else expenses += amt;
   });
 
-  const balance = income - expenses;
+  // Calculate current FD assets and Loan liabilities
+  let totalFdAssets = 0;
+  const fdsList = Array.isArray(fixedDeposits) ? fixedDeposits : [];
+  fdsList.forEach(fd => {
+    if (!fd) return;
+    const p = parseFloat(fd.depositAmount) || 0;
+    const { monthlyInterest } = calculateFdEarnings(p, fd.annualRate, fd.tenureMonths, fd.payoutFrequency);
+    const collectedCount = Array.isArray(fd.collectedMonths) ? fd.collectedMonths.length : 0;
+    totalFdAssets += p + (monthlyInterest * collectedCount);
+  });
+
+  let totalLoanLiabilities = 0;
+  const loansList = Array.isArray(loans) ? loans : [];
+  loansList.forEach(loan => {
+    if (!loan) return;
+    const schedule = generateAmortizationSchedule(loan);
+    const paidCount = Array.isArray(loan.paidMonths) ? loan.paidMonths.length : 0;
+    if (schedule.length > 0) {
+      const lastPaidItem = schedule[paidCount - 1];
+      const remainingBal = lastPaidItem ? lastPaidItem.remainingBalance : parseFloat(loan.principal) || 0;
+      totalLoanLiabilities += remainingBal;
+    }
+  });
+
+  // Factor in FD assets and Loan liabilities to Total Balance
+  const balance = (income - expenses) + totalFdAssets - totalLoanLiabilities;
   totalBalanceEl.textContent = formatCurrency(balance);
   totalIncomeEl.textContent = formatCurrency(income);
   totalExpensesEl.textContent = formatCurrency(expenses);
@@ -1029,49 +1154,68 @@ function renderSummaryCards(monthTransactions) {
 }
 
 function renderTransactionList(filteredList) {
-  if (!transactionCountEl || !transactionListEl || !emptyListStateEl) return;
-  transactionCountEl.textContent = `${filteredList.length} ${filteredList.length === 1 ? 'Item' : 'Items'}`;
-  transactionListEl.innerHTML = '';
+  try {
+    if (!transactionCountEl || !transactionListEl || !emptyListStateEl) return;
+    
+    // Ensure filteredList is safely treated as an array and contains valid transaction shapes
+    const list = Array.isArray(filteredList) ? filteredList.filter(validateTransaction) : [];
+    
+    transactionCountEl.textContent = `${list.length} ${list.length === 1 ? 'Item' : 'Items'}`;
+    transactionListEl.innerHTML = '';
 
-  if (filteredList.length === 0) {
-    emptyListStateEl.classList.remove('hidden');
-  } else {
-    emptyListStateEl.classList.add('hidden');
-    const sorted = [...filteredList].sort((a, b) => new Date(b.date) - new Date(a.date));
+    if (list.length === 0) {
+      emptyListStateEl.classList.remove('hidden');
+      transactionListEl.classList.add('hidden');
+    } else {
+      emptyListStateEl.classList.add('hidden');
+      transactionListEl.classList.remove('hidden');
+      const sorted = [...list].sort((a, b) => {
+        const dateA = a && a.date ? new Date(a.date) : new Date(0);
+        const dateB = b && b.date ? new Date(b.date) : new Date(0);
+        return dateB - dateA;
+      });
 
-    sorted.forEach(item => {
-      const li = document.createElement('li');
-      li.className = 'transaction-item';
-      li.dataset.id = item.id;
+      sorted.forEach(item => {
+        const li = document.createElement('li');
+        li.className = 'transaction-item';
+        li.dataset.id = item.id;
 
-      const config = CATEGORY_CONFIG[item.category] || CATEGORY_CONFIG.Other;
-      const isIncome = item.type === 'income';
+        const config = CATEGORY_CONFIG[item.category] || CATEGORY_CONFIG.Other;
+        const isIncome = item.type === 'income';
 
-      li.innerHTML = `
-        <div class="item-left">
-          <div class="item-icon" style="background: ${config.bg}; color: ${config.color}; border: 1px solid ${config.color}40;">
-            <i class="fa-solid ${config.icon}"></i>
-          </div>
-          <div class="item-info">
-            <span class="item-title">${escapeHTML(item.description)}</span>
-            <div class="item-meta">
-              <span class="category-tag cat-${item.category}">${item.category}</span>
-              <span>&bull;</span>
-              <span>${formatDisplayDate(item.date)}</span>
+        li.innerHTML = `
+          <div class="item-left">
+            <div class="item-icon" style="background: ${config.bg}; color: ${config.color}; border: 1px solid ${config.color}40;">
+              <i class="fa-solid ${config.icon}"></i>
+            </div>
+            <div class="item-info">
+              <span class="item-title">${escapeHTML(item.description)}</span>
+              <div class="item-meta">
+                <span class="category-tag cat-${item.category}">${item.category}</span>
+                <span>&bull;</span>
+                <span>${formatDisplayDate(item.date)}</span>
+              </div>
             </div>
           </div>
-        </div>
-        <div class="item-right">
-          <span class="item-amount ${isIncome ? 'income' : 'expense'}">
-            ${isIncome ? '+' : '-'}${formatCurrency(item.amount)}
-          </span>
-          <button class="delete-btn" title="Delete Transaction" onclick="handleDeleteTransaction('${item.id}', this.closest('.transaction-item'))">
-            <i class="fa-solid fa-trash-can"></i>
-          </button>
-        </div>
-      `;
-      transactionListEl.appendChild(li);
-    });
+          <div class="item-right">
+            <span class="item-amount ${isIncome ? 'income' : 'expense'}">
+              ${isIncome ? '+' : '-'}${formatCurrency(item.amount)}
+            </span>
+            <button class="delete-btn" title="Delete Transaction" onclick="handleDeleteTransaction('${item.id}', this.closest('.transaction-item'))">
+              <i class="fa-solid fa-trash-can"></i>
+            </button>
+          </div>
+        `;
+        transactionListEl.appendChild(li);
+      });
+    }
+  } catch (err) {
+    console.error('Error occurred during renderTransactionList: Failed to render transactions safely.', err);
+    
+    // Safely reset UI state to display empty list state instead of breaking the entire app interface
+    if (transactionCountEl) transactionCountEl.textContent = '0 Items';
+    if (transactionListEl) transactionListEl.innerHTML = '';
+    if (emptyListStateEl) emptyListStateEl.classList.remove('hidden');
   }
 }
 
@@ -1636,7 +1780,28 @@ function generatePdfReport() {
       if (t.type === 'income') totalIncome += amt;
       else totalExpenses += amt;
     });
-    const totalBalance = totalIncome - totalExpenses;
+
+    // Calculate current FD assets and Loan liabilities for report
+    let totalFdAssets = 0;
+    fixedDeposits.forEach(fd => {
+      const p = parseFloat(fd.depositAmount) || 0;
+      const { monthlyInterest } = calculateFdEarnings(p, fd.annualRate, fd.tenureMonths, fd.payoutFrequency);
+      const collectedCount = Array.isArray(fd.collectedMonths) ? fd.collectedMonths.length : 0;
+      totalFdAssets += p + (monthlyInterest * collectedCount);
+    });
+
+    let totalLoanLiabilities = 0;
+    loans.forEach(loan => {
+      const schedule = generateAmortizationSchedule(loan);
+      const paidCount = Array.isArray(loan.paidMonths) ? loan.paidMonths.length : 0;
+      if (schedule.length > 0) {
+        const lastPaidItem = schedule[paidCount - 1];
+        const remainingBal = lastPaidItem ? lastPaidItem.remainingBalance : parseFloat(loan.principal) || 0;
+        totalLoanLiabilities += remainingBal;
+      }
+    });
+
+    const totalBalance = (totalIncome - totalExpenses) + totalFdAssets - totalLoanLiabilities;
 
     const curr = (typeof currentCurrency !== 'undefined') ? currentCurrency : 'LKR';
     const currSymbol = curr === 'USD' ? '$' : 'Rs. ';
@@ -1935,10 +2100,9 @@ document.getElementById('importJsonFile')?.addEventListener('change', async (eve
         // Legacy backup format: Array of home transactions
         importedHomeData = parsedData.filter(validateTransaction);
       } else if (typeof parsedData === 'object' && parsedData !== null) {
-        if (Array.isArray(parsedData.homeData)) {
-          importedHomeData = parsedData.homeData.filter(validateTransaction);
-        } else if (Array.isArray(parsedData.transactions)) {
-          importedHomeData = parsedData.transactions.filter(validateTransaction);
+        const rawHomeData = parsedData.homeData || parsedData.transactions || [];
+        if (Array.isArray(rawHomeData)) {
+          importedHomeData = rawHomeData.filter(validateTransaction);
         }
       } else {
         throw new Error('Invalid JSON format');
@@ -1949,12 +2113,19 @@ document.getElementById('importJsonFile')?.addEventListener('change', async (eve
         return;
       }
 
-      transactions = importedHomeData;
+      console.log("[Restore] Merging transactions safely. Existing count:", transactions.length);
+      const existingIds = new Set(transactions.map(t => String(t.id).trim()));
+      const uniqueImported = importedHomeData.filter(t => !existingIds.has(String(t.id).trim()));
+      
+      transactions = mergeArraysById(transactions, importedHomeData);
+      console.log("[Restore] Merge complete. New transaction count:", transactions.length);
+      
       saveLocalTransactionsCache();
 
       if (currentUser && db) {
+        console.log("[Restore] Syncing restored unique transactions to Firestore...");
         const batch = db.batch();
-        importedHomeData.forEach(t => {
+        uniqueImported.forEach(t => {
           const docRef = db.collection('users').doc(currentUser.uid).collection('transactions').doc(t.id);
           batch.set(docRef, t);
         });
@@ -1964,7 +2135,7 @@ document.getElementById('importJsonFile')?.addEventListener('change', async (eve
       populateMonthFilter();
       renderApp();
 
-      showToast(`Successfully restored ${importedHomeData.length} transaction records!`, 'success');
+      showToast(`Successfully restored ${uniqueImported.length} new transaction records (merged safely)!`, 'success');
     } catch (error) {
       console.error('Import error:', error);
       showToast('Invalid backup file format.', 'danger');
@@ -2030,16 +2201,15 @@ document.getElementById('importFdLoanJsonFile')?.addEventListener('change', asyn
       let importedFds = [];
 
       if (typeof parsedData === 'object' && parsedData !== null) {
-        if (parsedData.fdLoanData && typeof parsedData.fdLoanData === 'object') {
-          if (Array.isArray(parsedData.fdLoanData.loans)) {
-            importedLoans = parsedData.fdLoanData.loans;
-          }
-          if (Array.isArray(parsedData.fdLoanData.fixedDeposits)) {
-            importedFds = parsedData.fdLoanData.fixedDeposits;
-          }
-        } else {
-          if (Array.isArray(parsedData.loans)) importedLoans = parsedData.loans;
-          if (Array.isArray(parsedData.fixedDeposits)) importedFds = parsedData.fixedDeposits;
+        const fdLoanData = parsedData.fdLoanData || {};
+        const rawLoans = fdLoanData.loans || parsedData.loans || [];
+        const rawFds = fdLoanData.fixedDeposits || fdLoanData.fds || parsedData.fixedDeposits || parsedData.fds || [];
+
+        if (Array.isArray(rawLoans)) {
+          importedLoans = rawLoans.filter(l => l && typeof l === 'object' && l.id);
+        }
+        if (Array.isArray(rawFds)) {
+          importedFds = rawFds.filter(f => f && typeof f === 'object' && f.id);
         }
       } else {
         throw new Error('Invalid JSON format');
@@ -2050,8 +2220,21 @@ document.getElementById('importFdLoanJsonFile')?.addEventListener('change', asyn
         return;
       }
 
-      if (importedLoans.length > 0) loans = importedLoans;
-      if (importedFds.length > 0) fixedDeposits = importedFds;
+      console.log("[Restore] Merging FDs & Loans safely. Existing Loans:", loans.length, "Existing FDs:", fixedDeposits.length);
+      
+      const existingLoanIds = new Set(loans.map(l => String(l.id).trim()));
+      const uniqueLoans = importedLoans.filter(l => !existingLoanIds.has(String(l.id).trim()));
+
+      const existingFdIds = new Set(fixedDeposits.map(f => String(f.id).trim()));
+      const uniqueFds = importedFds.filter(f => !existingFdIds.has(String(f.id).trim()));
+
+      loans = mergeArraysById(loans, importedLoans);
+      fixedDeposits = mergeArraysById(fixedDeposits, importedFds);
+
+      const newLoansCount = uniqueLoans.length;
+      const newFdsCount = uniqueFds.length;
+
+      console.log("[Restore] Merge complete. New Loans count:", loans.length, "New FDs count:", fixedDeposits.length);
 
       selectedLoanId = loans.length > 0 ? loans[0].id : null;
       selectedFdId = fixedDeposits.length > 0 ? fixedDeposits[0].id : null;
@@ -2059,15 +2242,20 @@ document.getElementById('importFdLoanJsonFile')?.addEventListener('change', asyn
       saveLocalLoansAndFdsCache();
 
       if (currentUser && db) {
+        console.log("[Restore] Syncing restored unique FDs & Loans to Firestore...");
         const batch = db.batch();
-        importedLoans.forEach(l => {
-          const docRef = db.collection('users').doc(currentUser.uid).collection('loans').doc(l.id);
-          batch.set(docRef, l);
-        });
-        importedFds.forEach(f => {
-          const docRef = db.collection('users').doc(currentUser.uid).collection('fixedDeposits').doc(f.id);
-          batch.set(docRef, f);
-        });
+        if (uniqueLoans.length > 0) {
+          uniqueLoans.forEach(l => {
+            const docRef = db.collection('users').doc(currentUser.uid).collection('loans').doc(l.id);
+            batch.set(docRef, l);
+          });
+        }
+        if (uniqueFds.length > 0) {
+          uniqueFds.forEach(f => {
+            const docRef = db.collection('users').doc(currentUser.uid).collection('fixedDeposits').doc(f.id);
+            batch.set(docRef, f);
+          });
+        }
         await batch.commit();
       }
 
@@ -2075,10 +2263,14 @@ document.getElementById('importFdLoanJsonFile')?.addEventListener('change', asyn
       renderApp();
 
       let restoredSummary = [];
-      if (importedLoans.length > 0) restoredSummary.push(`${importedLoans.length} loans`);
-      if (importedFds.length > 0) restoredSummary.push(`${importedFds.length} FDs`);
+      if (newLoansCount > 0) restoredSummary.push(`${newLoansCount} new loans`);
+      if (newFdsCount > 0) restoredSummary.push(`${newFdsCount} new FDs`);
 
-      showToast(`FD & Loan backup restored: ${restoredSummary.join(', ')}!`, 'success');
+      if (restoredSummary.length > 0) {
+        showToast(`FD & Loan backup restored successfully: ${restoredSummary.join(' and ')} merged safely!`, 'success');
+      } else {
+        showToast(`FD & Loan backup loaded, but all records already exist. No duplicates added.`, 'info');
+      }
     } catch (error) {
       console.error('Import FD/Loan error:', error);
       showToast('Invalid FD & Loan backup file format.', 'danger');
@@ -2508,8 +2700,8 @@ window.dismissUpdateBanner = dismissUpdateBanner;
    ========================================================================== */
 
 // Storage Keys
-const LOANS_STORAGE_KEY = 'finpulse_loans_v1';
-const FDS_STORAGE_KEY = 'finpulse_fds_v1';
+const LOANS_STORAGE_KEY = 'finpulse_loans';
+const FDS_STORAGE_KEY = 'finpulse_fds';
 
 // State
 let loans = [];
@@ -2650,63 +2842,211 @@ function generateFdSchedule(fd) {
 // --------------------------------------------------------------------------
 
 function loadLocalLoansAndFdsCache() {
+  console.log("[Init] Loading local Loans and FDs cache safely with protection guards...");
+  
+  // 1. Load Loans
   try {
-    const storedFdLoanData = localStorage.getItem(FD_LOAN_STORAGE_KEY) || localStorage.getItem('finpulse_fd_loan_data');
-    if (storedFdLoanData) {
-      const parsed = JSON.parse(storedFdLoanData);
-      if (parsed && typeof parsed === 'object') {
-        if (Array.isArray(parsed.loans)) {
-          loans = parsed.loans;
-        } else {
-          const storedLoans = localStorage.getItem(LOANS_STORAGE_KEY) || localStorage.getItem('finpulse_loans_v1');
-          loans = storedLoans ? JSON.parse(storedLoans) : [];
+    let loadedLoans = null;
+    const storedLoans = localStorage.getItem(LOANS_STORAGE_KEY);
+    if (storedLoans !== null) {
+      try {
+        const parsed = JSON.parse(storedLoans);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          loadedLoans = parsed;
         }
-        if (Array.isArray(parsed.fixedDeposits)) {
-          fixedDeposits = parsed.fixedDeposits;
-        } else {
-          const storedFds = localStorage.getItem(FDS_STORAGE_KEY) || localStorage.getItem('finpulse_fds_v1');
-          fixedDeposits = storedFds ? JSON.parse(storedFds) : [];
+      } catch (err) {
+        console.error("[Init] Error parsing LOANS_STORAGE_KEY:", err);
+      }
+    }
+    
+    // Fallback if primary key was empty/null
+    if (!loadedLoans) {
+      const legacyLoansV1 = localStorage.getItem('finpulse_loans_v1');
+      if (legacyLoansV1 !== null) {
+        try {
+          const parsed = JSON.parse(legacyLoansV1);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            loadedLoans = parsed;
+          }
+        } catch (e) {
+          console.error("[Init] Error parsing legacy finpulse_loans_v1:", e);
         }
       }
+    }
+    
+    if (!loadedLoans) {
+      const legacyFdLoan = localStorage.getItem('finpulse_fd_loan_data') || localStorage.getItem(FD_LOAN_STORAGE_KEY);
+      if (legacyFdLoan !== null) {
+        try {
+          const parsed = JSON.parse(legacyFdLoan);
+          if (parsed && Array.isArray(parsed.loans) && parsed.loans.length > 0) {
+            loadedLoans = parsed.loans;
+          }
+        } catch (e) {
+          console.error("[Init] Error parsing legacy finpulse_fd_loan_data:", e);
+        }
+      }
+    }
+    
+    // Protection Guard: If the loaded array from storage is valid and has length > 0, merge/update.
+    // Otherwise, keep the last known valid in-memory state and do NOT overwrite it or fallback.
+    if (loadedLoans && loadedLoans.length > 0) {
+      loans = mergeArraysById(loans, loadedLoans);
     } else {
-      const storedLoans = localStorage.getItem(LOANS_STORAGE_KEY) || localStorage.getItem('finpulse_loans_v1');
-      loans = storedLoans ? JSON.parse(storedLoans) : [];
-
-      const storedFds = localStorage.getItem(FDS_STORAGE_KEY) || localStorage.getItem('finpulse_fds_v1');
-      fixedDeposits = storedFds ? JSON.parse(storedFds) : [];
+      console.log("[Init] Protection Guard: Stored loans data is empty or invalid. Keeping last known valid loans count:", loans.length);
     }
   } catch (e) {
-    console.error('Error reading FD/Loan cache:', e);
+    console.error('[Init] Error in loading local loans:', e);
+    if (!Array.isArray(loans)) loans = [];
+  }
+
+  // 2. Load FDs
+  try {
+    let loadedFds = null;
+    const storedFds = localStorage.getItem(FDS_STORAGE_KEY);
+    if (storedFds !== null) {
+      try {
+        const parsed = JSON.parse(storedFds);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          loadedFds = parsed;
+        }
+      } catch (err) {
+        console.error("[Init] Error parsing FDS_STORAGE_KEY:", err);
+      }
+    }
+    
+    // Fallback if primary key was empty/null
+    if (!loadedFds) {
+      const legacyFdsV1 = localStorage.getItem('finpulse_fds_v1');
+      if (legacyFdsV1 !== null) {
+        try {
+          const parsed = JSON.parse(legacyFdsV1);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            loadedFds = parsed;
+          }
+        } catch (e) {
+          console.error("[Init] Error parsing legacy finpulse_fds_v1:", e);
+        }
+      }
+    }
+    
+    if (!loadedFds) {
+      const legacyFdLoan = localStorage.getItem('finpulse_fd_loan_data') || localStorage.getItem(FD_LOAN_STORAGE_KEY);
+      if (legacyFdLoan !== null) {
+        try {
+          const parsed = JSON.parse(legacyFdLoan);
+          if (parsed) {
+            const possibleFds = parsed.fixedDeposits || parsed.fds;
+            if (Array.isArray(possibleFds) && possibleFds.length > 0) {
+              loadedFds = possibleFds;
+            }
+          }
+        } catch (e) {
+          console.error("[Init] Error parsing legacy finpulse_fd_loan_data for FDs:", e);
+        }
+      }
+    }
+
+    // Protection Guard: If the loaded array from storage is valid and has length > 0, merge/update.
+    // Otherwise, keep the last known valid in-memory state and do NOT overwrite it or fallback.
+    if (loadedFds && loadedFds.length > 0) {
+      fixedDeposits = mergeArraysById(fixedDeposits, loadedFds);
+    } else {
+      console.log("[Init] Protection Guard: Stored FDs data is empty or invalid. Keeping last known valid FDs count:", fixedDeposits.length);
+    }
+  } catch (e) {
+    console.error('[Init] Error in loading local FDs:', e);
+    if (!Array.isArray(fixedDeposits)) fixedDeposits = [];
   }
 
   selectedLoanId = loans.length > 0 ? loans[0].id : null;
   selectedFdId = fixedDeposits.length > 0 ? fixedDeposits[0].id : null;
-}
+  console.log("[Init] Safe initialization completed. Active Loans:", loans.length, "Active FDs:", fixedDeposits.length);
 
-function saveLocalLoansAndFdsCache() {
-  try {
-    const payload = {
-      loans,
-      fixedDeposits,
-      updatedAt: new Date().toISOString()
-    };
-    localStorage.setItem(FD_LOAN_STORAGE_KEY, JSON.stringify(payload));
-    localStorage.setItem('finpulse_fd_loan_data', JSON.stringify(payload));
-    localStorage.setItem(LOANS_STORAGE_KEY, JSON.stringify(loans));
-    localStorage.setItem('finpulse_loans_v1', JSON.stringify(loans));
-    localStorage.setItem(FDS_STORAGE_KEY, JSON.stringify(fixedDeposits));
-    localStorage.setItem('finpulse_fds_v1', JSON.stringify(fixedDeposits));
-  } catch (e) {
-    console.error('Error saving FD/Loan cache:', e);
+  // Check FDs within 30 days of reaching maturity
+  if (typeof checkFDMaturities === 'function') {
+    checkFDMaturities();
+  }
+
+  // Recalculate dashboard summary totals in real-time
+  if (typeof renderApp === 'function' && typeof totalBalanceEl !== 'undefined' && totalBalanceEl) {
+    renderApp();
   }
 }
 
 function saveLocalLoansCache() {
-  saveLocalLoansAndFdsCache();
+  console.log("[Save] Saving loans state to localStorage independently...");
+  try {
+    localStorage.setItem(LOANS_STORAGE_KEY, JSON.stringify(loans));
+    localStorage.setItem('finpulse_loans_v1', JSON.stringify(loans));
+    
+    // Keep legacy bundle key in sync as a backup without losing/affecting other data
+    let currentBundle = { loans: [], fds: [], fixedDeposits: [] };
+    const rawData = localStorage.getItem('finpulse_fd_loan_data') || localStorage.getItem(FD_LOAN_STORAGE_KEY);
+    if (rawData) {
+      try {
+        const parsed = JSON.parse(rawData);
+        if (parsed && typeof parsed === 'object') {
+          currentBundle = parsed;
+        }
+      } catch (err) {}
+    }
+    const payload = {
+      ...currentBundle,
+      loans: loans,
+      updatedAt: new Date().toISOString()
+    };
+    localStorage.setItem(FD_LOAN_STORAGE_KEY, JSON.stringify(payload));
+    localStorage.setItem('finpulse_fd_loan_data', JSON.stringify(payload));
+    console.log("[Save] Loans saved successfully.");
+  } catch (e) {
+    console.error('[Save] Error saving Loans cache safely:', e);
+  }
+
+  if (typeof renderApp === 'function' && typeof totalBalanceEl !== 'undefined' && totalBalanceEl) {
+    renderApp();
+  }
 }
 
 function saveLocalFdsCache() {
-  saveLocalLoansAndFdsCache();
+  console.log("[Save] Saving FDs state to localStorage independently...");
+  try {
+    localStorage.setItem(FDS_STORAGE_KEY, JSON.stringify(fixedDeposits));
+    localStorage.setItem('finpulse_fds_v1', JSON.stringify(fixedDeposits));
+    
+    // Keep legacy bundle key in sync as a backup without losing/affecting other data
+    let currentBundle = { loans: [], fds: [], fixedDeposits: [] };
+    const rawData = localStorage.getItem('finpulse_fd_loan_data') || localStorage.getItem(FD_LOAN_STORAGE_KEY);
+    if (rawData) {
+      try {
+        const parsed = JSON.parse(rawData);
+        if (parsed && typeof parsed === 'object') {
+          currentBundle = parsed;
+        }
+      } catch (err) {}
+    }
+    const payload = {
+      ...currentBundle,
+      fixedDeposits: fixedDeposits,
+      fds: fixedDeposits,
+      updatedAt: new Date().toISOString()
+    };
+    localStorage.setItem(FD_LOAN_STORAGE_KEY, JSON.stringify(payload));
+    localStorage.setItem('finpulse_fd_loan_data', JSON.stringify(payload));
+    console.log("[Save] FDs saved successfully.");
+  } catch (e) {
+    console.error('[Save] Error saving FDs cache safely:', e);
+  }
+
+  if (typeof renderApp === 'function' && typeof totalBalanceEl !== 'undefined' && totalBalanceEl) {
+    renderApp();
+  }
+}
+
+function saveLocalLoansAndFdsCache() {
+  console.log("[Save] Synchronizing state to localStorage safely...");
+  saveLocalLoansCache();
+  saveLocalFdsCache();
 }
 
 function subscribeToUserLoansAndFds(userId) {
@@ -2719,28 +3059,37 @@ function subscribeToUserLoansAndFds(userId) {
   unsubscribeLoans = loansRef.onSnapshot(snapshot => {
     const items = [];
     snapshot.forEach(doc => items.push({ id: doc.id, ...doc.data() }));
-    loans = items;
-    saveLocalLoansCache();
-    if (!selectedLoanId && loans.length > 0) {
-      selectedLoanId = loans[0].id;
-    } else if (loans.length === 0) {
-      selectedLoanId = null;
+    
+    // Guard state against silent resets: Only overwrite in-memory state if Firestore actually returned valid items.
+    // If the Firestore array is empty, retain current valid in-memory loans (loaded from localStorage).
+    if (items.length > 0) {
+      loans = items;
+      if (!selectedLoanId && loans.length > 0) {
+        selectedLoanId = loans[0].id;
+      }
+      renderFdLoanModule();
+    } else {
+      console.log("[Firestore] Background listener returned empty loans. Retaining current in-memory loans count:", loans.length);
     }
-    renderFdLoanModule();
   }, err => console.error('Error listening to loans:', err));
 
   const fdsRef = db.collection('users').doc(userId).collection('fixedDeposits');
   unsubscribeFds = fdsRef.onSnapshot(snapshot => {
     const items = [];
     snapshot.forEach(doc => items.push({ id: doc.id, ...doc.data() }));
-    fixedDeposits = items;
-    saveLocalFdsCache();
-    if (!selectedFdId && fixedDeposits.length > 0) {
-      selectedFdId = fixedDeposits[0].id;
-    } else if (fixedDeposits.length === 0) {
-      selectedFdId = null;
+    
+    // Guard state against silent resets: Only overwrite in-memory state if Firestore actually returned valid items.
+    // If the Firestore array is empty, retain current valid in-memory FDs (loaded from localStorage).
+    if (items.length > 0) {
+      fixedDeposits = items;
+      if (!selectedFdId && fixedDeposits.length > 0) {
+        selectedFdId = fixedDeposits[0].id;
+      }
+      checkFDMaturities();
+      renderFdLoanModule();
+    } else {
+      console.log("[Firestore] Background listener returned empty FDs. Retaining current in-memory FDs count:", fixedDeposits.length);
     }
-    renderFdLoanModule();
   }, err => console.error('Error listening to FDs:', err));
 }
 
@@ -2781,6 +3130,34 @@ function selectFdAndFocus(fdId) {
 window.dismissAlert = dismissAlert;
 window.selectLoanAndFocus = selectLoanAndFocus;
 window.selectFdAndFocus = selectFdAndFocus;
+
+const notifiedMaturityFds = new Set();
+
+function checkFDMaturities() {
+  if (!Array.isArray(fixedDeposits)) return;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  fixedDeposits.forEach(fd => {
+    if (!fd || !fd.startDate || !fd.tenureMonths) return;
+    if (notifiedMaturityFds.has(fd.id)) return;
+
+    // Use same Date parsing logic as getFdAlertInfo for consistency
+    const startDt = fd.startDate ? new Date(fd.startDate + 'T00:00:00') : new Date();
+    const tenureMonths = parseInt(fd.tenureMonths) || 12;
+    const maturityDt = new Date(startDt.getFullYear(), startDt.getMonth() + tenureMonths, startDt.getDate());
+
+    const diffMs = maturityDt.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+
+    if (diffDays >= 0 && diffDays <= 30) {
+      notifiedMaturityFds.add(fd.id);
+      showToast(`⏰ Notice: Fixed Deposit "${fd.title}" is maturing in ${diffDays} day${diffDays === 1 ? '' : 's'} (Maturity Date: ${formatDisplayDate(maturityDt.toISOString().substring(0, 10))})!`, 'info');
+    }
+  });
+}
+
+window.checkFDMaturities = checkFDMaturities;
 
 function getFdAlertInfo(fd) {
   if (!fd) return null;
@@ -3051,7 +3428,8 @@ function renderLoanAnalyticsChart() {
 
   if (!emptyState || !canvasWrapper || !canvas) return;
 
-  if (!loans || loans.length === 0) {
+  const filteredLoans = getFilteredLoans();
+  if (!filteredLoans || filteredLoans.length === 0) {
     emptyState.classList.remove('hidden');
     canvasWrapper.classList.add('hidden');
     if (loanAnalyticsChartInstance) {
@@ -3061,7 +3439,7 @@ function renderLoanAnalyticsChart() {
     return;
   }
 
-  const selectedLoan = loans.find(l => l.id === selectedLoanId) || loans[0];
+  const selectedLoan = filteredLoans.find(l => l.id === selectedLoanId) || filteredLoans[0];
   if (!selectedLoan) {
     emptyState.classList.remove('hidden');
     canvasWrapper.classList.add('hidden');
@@ -3255,7 +3633,8 @@ function renderFdAnalyticsChart() {
 
   if (!emptyState || !canvasWrapper || !canvas) return;
 
-  if (!fixedDeposits || fixedDeposits.length === 0) {
+  const filteredFds = getFilteredFds();
+  if (!filteredFds || filteredFds.length === 0) {
     emptyState.classList.remove('hidden');
     canvasWrapper.classList.add('hidden');
     if (fdAnalyticsChartInstance) {
@@ -3265,7 +3644,7 @@ function renderFdAnalyticsChart() {
     return;
   }
 
-  const selectedFd = fixedDeposits.find(f => f.id === selectedFdId) || fixedDeposits[0];
+  const selectedFd = filteredFds.find(f => f.id === selectedFdId) || filteredFds[0];
   if (!selectedFd) {
     emptyState.classList.remove('hidden');
     canvasWrapper.classList.add('hidden');
@@ -3491,12 +3870,88 @@ function renderFdLoanTopSummary() {
   }
 }
 
+function getFilteredLoans() {
+  const filterStartVal = document.getElementById('loanFilterStart') ? document.getElementById('loanFilterStart').value : '';
+  const filterEndVal = document.getElementById('loanFilterEnd') ? document.getElementById('loanFilterEnd').value : '';
+  const clearBtn = document.getElementById('clearLoanFilterBtn');
+  
+  if (!filterStartVal && !filterEndVal) {
+    if (clearBtn) clearBtn.style.display = 'none';
+    return loans;
+  }
+
+  if (clearBtn) clearBtn.style.display = 'inline-block';
+
+  return loans.filter(loan => {
+    const startDt = loan.startDate ? new Date(loan.startDate + 'T00:00:00') : new Date();
+    startDt.setHours(0,0,0,0);
+    const tenureMonths = parseInt(loan.tenureMonths) || 12;
+    const maturityDt = new Date(startDt.getFullYear(), startDt.getMonth() + tenureMonths, startDt.getDate());
+    maturityDt.setHours(23,59,59,999);
+
+    if (filterStartVal) {
+      const filterStart = new Date(filterStartVal + 'T00:00:00');
+      filterStart.setHours(0,0,0,0);
+      if (maturityDt < filterStart) return false;
+    }
+    if (filterEndVal) {
+      const filterEnd = new Date(filterEndVal + 'T00:00:00');
+      filterEnd.setHours(23,59,59,999);
+      if (startDt > filterEnd) return false;
+    }
+    return true;
+  });
+}
+
+function getFilteredFds() {
+  const filterStartVal = document.getElementById('fdFilterStart') ? document.getElementById('fdFilterStart').value : '';
+  const filterEndVal = document.getElementById('fdFilterEnd') ? document.getElementById('fdFilterEnd').value : '';
+  const clearBtn = document.getElementById('clearFdFilterBtn');
+  
+  if (!filterStartVal && !filterEndVal) {
+    if (clearBtn) clearBtn.style.display = 'none';
+    return fixedDeposits;
+  }
+
+  if (clearBtn) clearBtn.style.display = 'inline-block';
+
+  return fixedDeposits.filter(fd => {
+    const startDt = fd.startDate ? new Date(fd.startDate + 'T00:00:00') : new Date();
+    startDt.setHours(0,0,0,0);
+    const tenureMonths = parseInt(fd.tenureMonths) || 12;
+    const maturityDt = new Date(startDt.getFullYear(), startDt.getMonth() + tenureMonths, startDt.getDate());
+    maturityDt.setHours(23,59,59,999);
+
+    if (filterStartVal) {
+      const filterStart = new Date(filterStartVal + 'T00:00:00');
+      filterStart.setHours(0,0,0,0);
+      if (maturityDt < filterStart) return false;
+    }
+    if (filterEndVal) {
+      const filterEnd = new Date(filterEndVal + 'T00:00:00');
+      filterEnd.setHours(23,59,59,999);
+      if (startDt > filterEnd) return false;
+    }
+    return true;
+  });
+}
+
 function renderSavedLoansList() {
   const container = document.getElementById('savedLoansList');
   const countEl = document.getElementById('savedLoansCount');
   if (!container) return;
 
-  if (countEl) countEl.textContent = `${loans.length} ${loans.length === 1 ? 'Loan' : 'Loans'}`;
+  const filteredLoans = getFilteredLoans();
+  const filterStartVal = document.getElementById('loanFilterStart') ? document.getElementById('loanFilterStart').value : '';
+  const filterEndVal = document.getElementById('loanFilterEnd') ? document.getElementById('loanFilterEnd').value : '';
+
+  if (countEl) {
+    if (filterStartVal || filterEndVal) {
+      countEl.textContent = `${filteredLoans.length} of ${loans.length} Filtered`;
+    } else {
+      countEl.textContent = `${loans.length} ${loans.length === 1 ? 'Loan' : 'Loans'}`;
+    }
+  }
   container.innerHTML = '';
 
   if (loans.length === 0) {
@@ -3510,11 +3965,22 @@ function renderSavedLoansList() {
     return;
   }
 
+  if (filteredLoans.length === 0) {
+    container.innerHTML = `
+      <div style="text-align: center; padding: 2.2rem 1rem; color: var(--text-muted); font-size: 0.85rem; background: rgba(255, 255, 255, 0.02); border: 1px dashed var(--border-color); border-radius: 1rem; grid-column: 1 / -1;">
+        <i class="fa-solid fa-calendar-xmark" style="font-size: 2.2rem; margin-bottom: 0.6rem; color: var(--accent-indigo); opacity: 0.6;"></i>
+        <p style="font-weight: 700; font-size: 0.92rem; color: var(--text-primary); margin-bottom: 0.2rem;">No matching loans</p>
+        <p style="font-size: 0.8rem; color: var(--text-muted);">Adjust or clear your date filters to see active loans.</p>
+      </div>
+    `;
+    return;
+  }
+
   container.style.display = 'grid';
   container.style.gridTemplateColumns = 'repeat(auto-fill, minmax(260px, 1fr))';
   container.style.gap = '1rem';
 
-  loans.forEach(loan => {
+  filteredLoans.forEach(loan => {
     const emi = calculateLoanEMI(loan.principal, loan.annualRate, loan.tenureMonths);
     const paidCount = Array.isArray(loan.paidMonths) ? loan.paidMonths.length : 0;
     const schedule = generateAmortizationSchedule(loan);
@@ -3581,15 +4047,16 @@ function renderAmortizationSchedule() {
 
   if (!tbody) return;
 
-  const selectedLoan = loans.find(l => l.id === selectedLoanId);
+  const filteredLoans = getFilteredLoans();
+  const selectedLoan = filteredLoans.find(l => l.id === selectedLoanId) || filteredLoans[0];
 
-  if (!selectedLoan || loans.length === 0) {
+  if (!selectedLoan || filteredLoans.length === 0) {
     if (emptyState) {
       emptyState.classList.remove('hidden');
       emptyState.innerHTML = `
         <div class="empty-icon"><i class="fa-solid fa-calculator"></i></div>
-        <p class="empty-title">No active loans or fixed deposits found</p>
-        <p class="empty-subtitle">Add your first loan using the form to generate its interactive amortization schedule.</p>
+        <p class="empty-title">No matching loans found</p>
+        <p class="empty-subtitle">Adjust or clear your date filters to see the interactive amortization schedule.</p>
       `;
     }
     if (tableContainer) tableContainer.classList.add('hidden');
@@ -3637,6 +4104,10 @@ function renderAmortizationSchedule() {
   schedule.forEach(item => {
     const tr = document.createElement('tr');
     if (item.isPaid) tr.className = 'paid-row';
+    
+    // Add smooth cascading animation delay based on month sequence
+    tr.style.animationDelay = `${(item.monthNum - 1) * 15}ms`;
+    tr.style.animationFillMode = 'both';
 
     tr.innerHTML = `
       <td style="font-weight: 700;">Month ${item.monthNum}</td>
@@ -3661,7 +4132,17 @@ function renderSavedFdsList() {
   const countEl = document.getElementById('savedFdsCount');
   if (!container) return;
 
-  if (countEl) countEl.textContent = `${fixedDeposits.length} ${fixedDeposits.length === 1 ? 'FD' : 'FDs'}`;
+  const filteredFds = getFilteredFds();
+  const filterStartVal = document.getElementById('fdFilterStart') ? document.getElementById('fdFilterStart').value : '';
+  const filterEndVal = document.getElementById('fdFilterEnd') ? document.getElementById('fdFilterEnd').value : '';
+
+  if (countEl) {
+    if (filterStartVal || filterEndVal) {
+      countEl.textContent = `${filteredFds.length} of ${fixedDeposits.length} Filtered`;
+    } else {
+      countEl.textContent = `${fixedDeposits.length} ${fixedDeposits.length === 1 ? 'FD' : 'FDs'}`;
+    }
+  }
   container.innerHTML = '';
 
   if (fixedDeposits.length === 0) {
@@ -3675,11 +4156,22 @@ function renderSavedFdsList() {
     return;
   }
 
+  if (filteredFds.length === 0) {
+    container.innerHTML = `
+      <div style="text-align: center; padding: 2.2rem 1rem; color: var(--text-muted); font-size: 0.85rem; background: rgba(255, 255, 255, 0.02); border: 1px dashed var(--border-color); border-radius: 1rem; grid-column: 1 / -1;">
+        <i class="fa-solid fa-calendar-xmark" style="font-size: 2.2rem; margin-bottom: 0.6rem; color: #10b981; opacity: 0.6;"></i>
+        <p style="font-weight: 700; font-size: 0.92rem; color: var(--text-primary); margin-bottom: 0.2rem;">No matching FDs</p>
+        <p style="font-size: 0.8rem; color: var(--text-muted);">Adjust or clear your date filters to see active FDs.</p>
+      </div>
+    `;
+    return;
+  }
+
   container.style.display = 'grid';
   container.style.gridTemplateColumns = 'repeat(auto-fill, minmax(260px, 1fr))';
   container.style.gap = '1rem';
 
-  fixedDeposits.forEach(fd => {
+  filteredFds.forEach(fd => {
     const { monthlyInterest } = calculateFdEarnings(fd.depositAmount, fd.annualRate, fd.tenureMonths, fd.payoutFrequency);
     const collectedCount = Array.isArray(fd.collectedMonths) ? fd.collectedMonths.length : 0;
     const progressPct = Math.min(100, Math.round((collectedCount / (fd.tenureMonths || 1)) * 100));
@@ -3739,15 +4231,16 @@ function renderFdEarningsSchedule() {
 
   if (!tbody) return;
 
-  const selectedFd = fixedDeposits.find(f => f.id === selectedFdId);
+  const filteredFds = getFilteredFds();
+  const selectedFd = filteredFds.find(f => f.id === selectedFdId) || filteredFds[0];
 
-  if (!selectedFd || fixedDeposits.length === 0) {
+  if (!selectedFd || filteredFds.length === 0) {
     if (emptyState) {
       emptyState.classList.remove('hidden');
       emptyState.innerHTML = `
         <div class="empty-icon"><i class="fa-solid fa-building-columns"></i></div>
-        <p class="empty-title">No active loans or fixed deposits found</p>
-        <p class="empty-subtitle">Add your first fixed deposit using the form to track monthly interest earnings.</p>
+        <p class="empty-title">No matching FDs found</p>
+        <p class="empty-subtitle">Adjust or clear your date filters to track monthly interest earnings.</p>
       `;
     }
     if (tableContainer) tableContainer.classList.add('hidden');
@@ -3845,7 +4338,7 @@ window.handleToggleLoanInstallment = function (loanId, monthNum) {
       description: `Loan EMI: ${loan.title} (Month #${monthNum})`,
       amount: emiLKR,
       type: 'expense',
-      category: 'Utilities',
+      category: 'Other',
       date: monthData.dueDate || getFormattedDate(0),
       createdAt: new Date().toISOString()
     };
@@ -3931,20 +4424,6 @@ window.handleCollectFdInterest = function (fdId, monthNum) {
 window.handleDeleteLoan = function (loanId) {
   console.log("[DeleteLoan] Start process for ID:", loanId);
   
-  // 1. Correctly parse the localStorage key 'finpulse_fd_loan_data'
-  let currentData = {};
-  try {
-    const rawData = localStorage.getItem('finpulse_fd_loan_data');
-    if (rawData) {
-      currentData = JSON.parse(rawData);
-      console.log("[DeleteLoan] Successfully parsed existing finpulse_fd_loan_data:", currentData);
-    } else {
-      console.log("[DeleteLoan] No existing finpulse_fd_loan_data found, starting with empty object");
-    }
-  } catch (err) {
-    console.error("[DeleteLoan] Error parsing 'finpulse_fd_loan_data' from localStorage:", err);
-  }
-
   const target = loans.find(l => String(l.id).trim() === String(loanId).trim());
   if (!target) {
     console.warn("[DeleteLoan] Target loan not found in active memory:", loanId);
@@ -3952,33 +4431,20 @@ window.handleDeleteLoan = function (loanId) {
     console.log("[DeleteLoan] Target loan found:", target);
   }
 
-  // 2. Filter the array
+  // Filter the array
   const updatedLoans = loans.filter(l => String(l.id).trim() !== String(loanId).trim());
   console.log("[DeleteLoan] Filtered loans array. Previous count:", loans.length, "New count:", updatedLoans.length);
 
-  // 3. Update the React-like state
+  // Update the React-like state
   loans = updatedLoans;
   if (String(selectedLoanId).trim() === String(loanId).trim()) {
     selectedLoanId = loans.length > 0 ? loans[0].id : null;
     console.log("[DeleteLoan] Reset selectedLoanId to:", selectedLoanId);
   }
 
-  // 4. Re-serialize and save to localStorage (State & Storage synchronized)
-  try {
-    const newDataPayload = {
-      ...currentData,
-      loans: updatedLoans,
-      updatedAt: new Date().toISOString()
-    };
-    localStorage.setItem('finpulse_fd_loan_data', JSON.stringify(newDataPayload));
-    console.log("[DeleteLoan] Synchronized 'finpulse_fd_loan_data' in localStorage:", newDataPayload);
-  } catch (err) {
-    console.error("[DeleteLoan] Error saving 'finpulse_fd_loan_data' to localStorage:", err);
-  }
-
-  // Run general cache save helper to keep other secondary keys (e.g. LOANS_STORAGE_KEY) in sync
-  saveLocalLoansAndFdsCache();
-  console.log("[DeleteLoan] Finished sync with all local storage cache keys.");
+  // Save independently
+  saveLocalLoansCache();
+  console.log("[DeleteLoan] Finished independent loans cache save.");
 
   // Firebase update
   if (currentUser && db) {
@@ -3986,13 +4452,13 @@ window.handleDeleteLoan = function (loanId) {
     db.collection('users').doc(currentUser.uid).collection('loans').doc(loanId).delete();
   }
 
-  // 5. Finally, close the modal/popup (after state and storage are synchronized)
+  // Finally, close the modal/popup (after state and storage are synchronized)
   if (typeof window.closeEditLoanModal === 'function') {
     console.log("[DeleteLoan] Invoking closeEditLoanModal now that sync is done");
     window.closeEditLoanModal();
   }
 
-  // 6. Immediate UI Re-render
+  // Immediate UI Re-render
   renderFdLoanModule();
   renderApp();
   showToast(`Loan "${target ? target.title : loanId}" deleted successfully.`, 'info');
@@ -4051,20 +4517,6 @@ window.handleClearFdLoanData = async function () {
 window.handleDeleteFD = function (fdId) {
   console.log("[DeleteFD] Start process for ID:", fdId);
 
-  // 1. Correctly parse the localStorage key 'finpulse_fd_loan_data'
-  let currentData = {};
-  try {
-    const rawData = localStorage.getItem('finpulse_fd_loan_data');
-    if (rawData) {
-      currentData = JSON.parse(rawData);
-      console.log("[DeleteFD] Successfully parsed existing finpulse_fd_loan_data:", currentData);
-    } else {
-      console.log("[DeleteFD] No existing finpulse_fd_loan_data found, starting with empty object");
-    }
-  } catch (err) {
-    console.error("[DeleteFD] Error parsing 'finpulse_fd_loan_data' from localStorage:", err);
-  }
-
   const target = fixedDeposits.find(f => String(f.id).trim() === String(fdId).trim());
   if (!target) {
     console.warn("[DeleteFD] Target Fixed Deposit not found in active memory:", fdId);
@@ -4072,34 +4524,20 @@ window.handleDeleteFD = function (fdId) {
     console.log("[DeleteFD] Target Fixed Deposit found:", target);
   }
 
-  // 2. Filter the array
+  // Filter the array
   const updatedFDs = fixedDeposits.filter(f => String(f.id).trim() !== String(fdId).trim());
   console.log("[DeleteFD] Filtered fixedDeposits array. Previous count:", fixedDeposits.length, "New count:", updatedFDs.length);
 
-  // 3. Update the React-like state
+  // Update the React-like state
   fixedDeposits = updatedFDs;
   if (String(selectedFdId).trim() === String(fdId).trim()) {
     selectedFdId = fixedDeposits.length > 0 ? fixedDeposits[0].id : null;
     console.log("[DeleteFD] Reset selectedFdId to:", selectedFdId);
   }
 
-  // 4. Re-serialize and save to localStorage (State & Storage synchronized)
-  try {
-    const newDataPayload = {
-      ...currentData,
-      fixedDeposits: updatedFDs,
-      fds: updatedFDs,
-      updatedAt: new Date().toISOString()
-    };
-    localStorage.setItem('finpulse_fd_loan_data', JSON.stringify(newDataPayload));
-    console.log("[DeleteFD] Synchronized 'finpulse_fd_loan_data' in localStorage:", newDataPayload);
-  } catch (err) {
-    console.error("[DeleteFD] Error saving 'finpulse_fd_loan_data' to localStorage:", err);
-  }
-
-  // Run general cache save helper to keep other secondary keys (e.g. FDS_STORAGE_KEY) in sync
-  saveLocalLoansAndFdsCache();
-  console.log("[DeleteFD] Finished sync with all local storage cache keys.");
+  // Save independently
+  saveLocalFdsCache();
+  console.log("[DeleteFD] Finished independent FDs cache save.");
 
   // Firebase update
   if (currentUser && db) {
@@ -4107,13 +4545,13 @@ window.handleDeleteFD = function (fdId) {
     db.collection('users').doc(currentUser.uid).collection('fixedDeposits').doc(fdId).delete();
   }
 
-  // 5. Finally, close the modal/popup (after state and storage are synchronized)
+  // Finally, close the modal/popup (after state and storage are synchronized)
   if (typeof window.closeEditFdModal === 'function') {
     console.log("[DeleteFD] Invoking closeEditFdModal now that sync is done");
     window.closeEditFdModal();
   }
 
-  // 6. Immediate UI Re-render
+  // Immediate UI Re-render
   renderFdLoanModule();
   renderApp();
   showToast(`Fixed Deposit "${target ? target.title : fdId}" deleted successfully.`, 'info');
@@ -4676,6 +5114,51 @@ function setupFdLoanModuleListeners() {
     });
   }
 
+  // Date Filter Listeners for Loans and FDs
+  const loanFilterStart = document.getElementById('loanFilterStart');
+  const loanFilterEnd = document.getElementById('loanFilterEnd');
+  const clearLoanFilterBtn = document.getElementById('clearLoanFilterBtn');
+  if (loanFilterStart && loanFilterEnd) {
+    const handleLoanFilterChange = () => {
+      renderSavedLoansList();
+      renderLoanAnalyticsChart();
+      renderAmortizationSchedule();
+    };
+    loanFilterStart.addEventListener('change', handleLoanFilterChange);
+    loanFilterEnd.addEventListener('change', handleLoanFilterChange);
+  }
+  if (clearLoanFilterBtn) {
+    clearLoanFilterBtn.addEventListener('click', () => {
+      if (loanFilterStart) loanFilterStart.value = '';
+      if (loanFilterEnd) loanFilterEnd.value = '';
+      renderSavedLoansList();
+      renderLoanAnalyticsChart();
+      renderAmortizationSchedule();
+    });
+  }
+
+  const fdFilterStart = document.getElementById('fdFilterStart');
+  const fdFilterEnd = document.getElementById('fdFilterEnd');
+  const clearFdFilterBtn = document.getElementById('clearFdFilterBtn');
+  if (fdFilterStart && fdFilterEnd) {
+    const handleFdFilterChange = () => {
+      renderSavedFdsList();
+      renderFdAnalyticsChart();
+      renderFdEarningsSchedule();
+    };
+    fdFilterStart.addEventListener('change', handleFdFilterChange);
+    fdFilterEnd.addEventListener('change', handleFdFilterChange);
+  }
+  if (clearFdFilterBtn) {
+    clearFdFilterBtn.addEventListener('click', () => {
+      if (fdFilterStart) fdFilterStart.value = '';
+      if (fdFilterEnd) fdFilterEnd.value = '';
+      renderSavedFdsList();
+      renderFdAnalyticsChart();
+      renderFdEarningsSchedule();
+    });
+  }
+
   const addLoanForm = document.getElementById('addLoanForm');
   if (addLoanForm) {
     addLoanForm.addEventListener('submit', (e) => {
@@ -4811,7 +5294,7 @@ function setupFdLoanModuleListeners() {
         loan.paidMonths = loan.paidMonths.filter(m => m <= tenureMonths);
       }
 
-      saveLocalLoansAndFdsCache();
+      saveLocalLoansCache();
       renderApp();
 
       if (currentUser && db) {

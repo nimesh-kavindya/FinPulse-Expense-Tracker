@@ -661,6 +661,24 @@
                 <h3><i class="fa-solid fa-folder-open" style="color: var(--accent-indigo);"></i> Your Active Loans</h3>
                 <span id="savedLoansCount" class="count-badge">0 Loans</span>
               </div>
+
+              <!-- Date-range filter row -->
+              <div class="filter-row" style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; margin-top: 0.75rem; padding: 0.5rem 0.75rem; border-radius: 0.75rem; border: 1px solid var(--border-color); background: rgba(255, 255, 255, 0.02); flex-wrap: wrap;">
+                <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+                  <span style="font-size: 0.75rem; font-weight: 600; color: var(--text-secondary); display: flex; align-items: center; gap: 0.25rem;">
+                    <i class="fa-solid fa-filter" style="font-size: 0.7rem; color: var(--accent-indigo);"></i> Active Date:
+                  </span>
+                  <div style="display: flex; align-items: center; gap: 0.25rem;">
+                    <input type="date" id="loanFilterStart" class="form-control" style="padding: 0.2rem 0.4rem; font-size: 0.75rem; border-radius: 0.4rem; border: 1px solid var(--border-color); background: rgba(0,0,0,0.15); color: var(--text-primary); width: 115px; height: auto;" title="Start Date Filter" />
+                    <span style="font-size: 0.7rem; color: var(--text-muted);">to</span>
+                    <input type="date" id="loanFilterEnd" class="form-control" style="padding: 0.2rem 0.4rem; font-size: 0.75rem; border-radius: 0.4rem; border: 1px solid var(--border-color); background: rgba(0,0,0,0.15); color: var(--text-primary); width: 115px; height: auto;" title="End Date Filter" />
+                  </div>
+                </div>
+                <button type="button" id="clearLoanFilterBtn" style="padding: 0.2rem 0.5rem; font-size: 0.7rem; background: rgba(244, 63, 94, 0.15); color: var(--color-expense); border: none; border-radius: 0.4rem; cursor: pointer; font-weight: 700; display: none;">
+                  Clear
+                </button>
+              </div>
+
               <div id="savedLoansList" style="margin-top: 1rem;">
                 <!-- Dynamically populated in app.js -->
               </div>
@@ -834,6 +852,24 @@
                 <h3><i class="fa-solid fa-coins" style="color: #10b981;"></i> Your Active FDs</h3>
                 <span id="savedFdsCount" class="count-badge">0 FDs</span>
               </div>
+
+              <!-- Date-range filter row -->
+              <div class="filter-row" style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; margin-top: 0.75rem; padding: 0.5rem 0.75rem; border-radius: 0.75rem; border: 1px solid var(--border-color); background: rgba(255, 255, 255, 0.02); flex-wrap: wrap;">
+                <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+                  <span style="font-size: 0.75rem; font-weight: 600; color: var(--text-secondary); display: flex; align-items: center; gap: 0.25rem;">
+                    <i class="fa-solid fa-filter" style="font-size: 0.7rem; color: #10b981;"></i> Active Date:
+                  </span>
+                  <div style="display: flex; align-items: center; gap: 0.25rem;">
+                    <input type="date" id="fdFilterStart" class="form-control" style="padding: 0.2rem 0.4rem; font-size: 0.75rem; border-radius: 0.4rem; border: 1px solid var(--border-color); background: rgba(0,0,0,0.15); color: var(--text-primary); width: 115px; height: auto;" title="Start Date Filter" />
+                    <span style="font-size: 0.7rem; color: var(--text-muted);">to</span>
+                    <input type="date" id="fdFilterEnd" class="form-control" style="padding: 0.2rem 0.4rem; font-size: 0.75rem; border-radius: 0.4rem; border: 1px solid var(--border-color); background: rgba(0,0,0,0.15); color: var(--text-primary); width: 115px; height: auto;" title="End Date Filter" />
+                  </div>
+                </div>
+                <button type="button" id="clearFdFilterBtn" style="padding: 0.2rem 0.5rem; font-size: 0.7rem; background: rgba(244, 63, 94, 0.15); color: var(--color-expense); border: none; border-radius: 0.4rem; cursor: pointer; font-weight: 700; display: none;">
+                  Clear
+                </button>
+              </div>
+
               <div id="savedFdsList" style="margin-top: 1rem;">
                 <!-- Dynamically populated in app.js -->
               </div>
