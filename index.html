@@ -574,7 +574,14 @@
           <span style="font-size: 0.8rem; color: var(--text-muted);">
             <i class="fa-solid fa-shield-halved" style="color: #10b981;"></i> Auto-syncs to Budget & Cash Balance
           </span>
-          <button type="button" id="clearFdLoanDataBtn" class="btn btn-sm" style="font-size: 0.78rem; padding: 0.35rem 0.75rem; border-radius: var(--radius-md); display: inline-flex; align-items: center; gap: 0.35rem; color: #f43f5e; border: 1px solid rgba(244, 63, 94, 0.3); background: rgba(244, 63, 94, 0.1); cursor: pointer; font-weight: 600; transition: all 0.2s ease;">
+          <button type="button" id="exportFdLoanJsonBtn" class="btn btn-sm" style="font-size: 0.78rem; padding: 0.35rem 0.75rem; border-radius: var(--radius-md); display: inline-flex; align-items: center; gap: 0.35rem; color: var(--accent-indigo); border: 1px solid rgba(99, 102, 241, 0.3); background: rgba(99, 102, 241, 0.1); cursor: pointer; font-weight: 600; transition: all 0.2s ease;" title="Export FD & Loan backup (JSON)">
+            <i class="fa-solid fa-cloud-arrow-down"></i> Backup FD/Loan
+          </button>
+          <label for="importFdLoanJsonFile" class="btn btn-sm" style="font-size: 0.78rem; padding: 0.35rem 0.75rem; border-radius: var(--radius-md); display: inline-flex; align-items: center; gap: 0.35rem; color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); background: rgba(16, 185, 129, 0.1); cursor: pointer; font-weight: 600; transition: all 0.2s ease;" title="Restore FD & Loan from JSON backup file">
+            <i class="fa-solid fa-cloud-arrow-up"></i> Restore FD/Loan
+          </label>
+          <input type="file" id="importFdLoanJsonFile" accept=".json" style="display: none;">
+          <button type="button" id="clearFdLoanDataBtn" onclick="handleClearFdLoanData()" class="btn btn-sm" style="font-size: 0.78rem; padding: 0.35rem 0.75rem; border-radius: var(--radius-md); display: inline-flex; align-items: center; gap: 0.35rem; color: #f43f5e; border: 1px solid rgba(244, 63, 94, 0.3); background: rgba(244, 63, 94, 0.1); cursor: pointer; font-weight: 600; transition: all 0.2s ease;">
             <i class="fa-solid fa-trash-can"></i> Clear FD & Loan Data
           </button>
         </div>
@@ -1000,6 +1007,142 @@
         <div class="modal-actions" style="margin-top: 1.25rem; display: flex; gap: 0.75rem; justify-content: flex-end;">
           <button type="button" id="closeBudgetModalBtn" class="btn btn-outline">Cancel</button>
           <button type="submit" class="btn btn-primary"><i class="fa-solid fa-floppy-disk"></i> Save Limits</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Edit Loan Modal -->
+  <div id="editLoanModal" class="modal-backdrop hidden">
+    <div class="glass-card modal-card" style="max-width: 480px;">
+      <div class="modal-header">
+        <div class="modal-icon" style="width: 42px; height: 42px; border-radius: var(--radius-md); background: rgba(99, 102, 241, 0.15); border: 1px solid rgba(99, 102, 241, 0.3); color: #818cf8; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; flex-shrink: 0;">
+          <i class="fa-solid fa-pen-to-square"></i>
+        </div>
+        <div>
+          <h3>Edit Active Loan</h3>
+          <p class="modal-subtitle">Update principal, rate, tenure or dates & recalculate</p>
+        </div>
+      </div>
+      <form id="editLoanForm" style="margin-top: 1rem;">
+        <input type="hidden" id="editLoanId">
+        <div class="form-group" style="margin-bottom: 0.85rem;">
+          <label style="font-weight: 600; font-size: 0.85rem;">Facility / Loan Title</label>
+          <div class="input-wrapper">
+            <span class="input-icon"><i class="fa-solid fa-heading"></i></span>
+            <input type="text" id="editLoanTitle" required placeholder="e.g. Home Mortgage">
+          </div>
+        </div>
+        <div class="form-group" style="margin-bottom: 0.85rem;">
+          <label style="font-weight: 600; font-size: 0.85rem;">Loan Principal Amount (<span class="editLoanCurrText">LKR</span>)</label>
+          <div class="input-wrapper">
+            <span class="input-icon editLoanCurrSymbol" style="font-weight: 700;">Rs.</span>
+            <input type="number" id="editLoanPrincipal" step="0.01" min="0" required placeholder="0.00">
+          </div>
+        </div>
+        <div class="form-row" style="margin-bottom: 0.85rem;">
+          <div class="form-group">
+            <label style="font-weight: 600; font-size: 0.85rem;">Annual Rate (% p.a.)</label>
+            <div class="input-wrapper">
+              <span class="input-icon"><i class="fa-solid fa-percent"></i></span>
+              <input type="number" id="editLoanRate" step="0.01" min="0" required placeholder="12.5">
+            </div>
+          </div>
+          <div class="form-group">
+            <label style="font-weight: 600; font-size: 0.85rem;">Tenure (Months)</label>
+            <div class="input-wrapper">
+              <span class="input-icon"><i class="fa-solid fa-calendar-days"></i></span>
+              <input type="number" id="editLoanTenure" step="1" min="1" required placeholder="12">
+            </div>
+          </div>
+        </div>
+        <div class="form-group" style="margin-bottom: 1.25rem;">
+          <label style="font-weight: 600; font-size: 0.85rem;">Start Date</label>
+          <div class="input-wrapper">
+            <span class="input-icon"><i class="fa-solid fa-calendar"></i></span>
+            <input type="date" id="editLoanStartDate" required>
+          </div>
+        </div>
+        <div class="modal-actions" style="display: flex; gap: 0.75rem; justify-content: space-between; align-items: center;">
+          <button type="button" id="deleteLoanFromModalBtn" class="btn" style="color: #f43f5e; border: 1px solid rgba(244, 63, 94, 0.3); background: rgba(244, 63, 94, 0.1); font-weight: 600;"><i class="fa-solid fa-trash-can"></i> Delete Loan</button>
+          <div style="display: flex; gap: 0.75rem;">
+            <button type="button" onclick="window.closeEditLoanModal()" class="btn btn-outline">Cancel</button>
+            <button type="submit" class="btn btn-primary"><i class="fa-solid fa-floppy-disk"></i> Update Loan & Recalculate</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Edit Fixed Deposit Modal -->
+  <div id="editFdModal" class="modal-backdrop hidden">
+    <div class="glass-card modal-card" style="max-width: 480px;">
+      <div class="modal-header">
+        <div class="modal-icon" style="width: 42px; height: 42px; border-radius: var(--radius-md); background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.3); color: #10b981; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; flex-shrink: 0;">
+          <i class="fa-solid fa-pen-to-square"></i>
+        </div>
+        <div>
+          <h3>Edit Fixed Deposit</h3>
+          <p class="modal-subtitle">Update deposit amount, rate, tenure or payout & recalculate</p>
+        </div>
+      </div>
+      <form id="editFdForm" style="margin-top: 1rem;">
+        <input type="hidden" id="editFdId">
+        <div class="form-group" style="margin-bottom: 0.85rem;">
+          <label style="font-weight: 600; font-size: 0.85rem;">Fixed Deposit Title</label>
+          <div class="input-wrapper">
+            <span class="input-icon"><i class="fa-solid fa-heading"></i></span>
+            <input type="text" id="editFdTitle" required placeholder="e.g. Commercial Bank 1-Yr FD">
+          </div>
+        </div>
+        <div class="form-group" style="margin-bottom: 0.85rem;">
+          <label style="font-weight: 600; font-size: 0.85rem;">Deposit Principal (<span class="editFdCurrText">LKR</span>)</label>
+          <div class="input-wrapper">
+            <span class="input-icon editFdCurrSymbol" style="font-weight: 700;">Rs.</span>
+            <input type="number" id="editFdDeposit" step="0.01" min="0" required placeholder="0.00">
+          </div>
+        </div>
+        <div class="form-row" style="margin-bottom: 0.85rem;">
+          <div class="form-group">
+            <label style="font-weight: 600; font-size: 0.85rem;">Annual Rate (% p.a.)</label>
+            <div class="input-wrapper">
+              <span class="input-icon"><i class="fa-solid fa-percent"></i></span>
+              <input type="number" id="editFdRate" step="0.01" min="0" required placeholder="10.5">
+            </div>
+          </div>
+          <div class="form-group">
+            <label style="font-weight: 600; font-size: 0.85rem;">Tenure (Months)</label>
+            <div class="input-wrapper">
+              <span class="input-icon"><i class="fa-solid fa-calendar-days"></i></span>
+              <input type="number" id="editFdTenure" step="1" min="1" required placeholder="12">
+            </div>
+          </div>
+        </div>
+        <div class="form-row" style="margin-bottom: 1.25rem;">
+          <div class="form-group">
+            <label style="font-weight: 600; font-size: 0.85rem;">Payout Frequency</label>
+            <div class="input-wrapper">
+              <span class="input-icon"><i class="fa-solid fa-clock-rotate-left"></i></span>
+              <select id="editFdPayoutFreq" required>
+                <option value="monthly">Monthly Interest</option>
+                <option value="maturity">At Maturity</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label style="font-weight: 600; font-size: 0.85rem;">Start Date</label>
+            <div class="input-wrapper">
+              <span class="input-icon"><i class="fa-solid fa-calendar"></i></span>
+              <input type="date" id="editFdStartDate" required>
+            </div>
+          </div>
+        </div>
+        <div class="modal-actions" style="display: flex; gap: 0.75rem; justify-content: space-between; align-items: center;">
+          <button type="button" id="deleteFdFromModalBtn" class="btn" style="color: #f43f5e; border: 1px solid rgba(244, 63, 94, 0.3); background: rgba(244, 63, 94, 0.1); font-weight: 600;"><i class="fa-solid fa-trash-can"></i> Delete FD</button>
+          <div style="display: flex; gap: 0.75rem;">
+            <button type="button" onclick="window.closeEditFdModal()" class="btn btn-outline">Cancel</button>
+            <button type="submit" class="btn btn-primary" style="background: linear-gradient(135deg, #10b981, #059669);"><i class="fa-solid fa-floppy-disk"></i> Update FD & Recalculate</button>
+          </div>
         </div>
       </form>
     </div>

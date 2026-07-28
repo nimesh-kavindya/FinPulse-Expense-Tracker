@@ -1882,7 +1882,7 @@ function drawMetricCard(doc, x, y, width, height, title, valueStr, valueColor, b
   doc.text(valueStr, x + 3.5, y + 15);
 }
 
-// JSON Export Backup Handler (Strictly for Home Transactions & Budget Data)
+// JSON Export Backup Handler (Home Transactions only)
 function handleExportJson() {
   try {
     if (transactions.length === 0) {
@@ -1919,7 +1919,7 @@ function handleExportJson() {
 
 document.getElementById('exportJsonBtn')?.addEventListener('click', handleExportJson);
 
-// JSON Import Restore
+// JSON Import Restore (Home Transactions only)
 document.getElementById('importJsonFile')?.addEventListener('change', async (event) => {
   const file = event.target.files[0];
   if (!file) return;
@@ -1930,20 +1930,106 @@ document.getElementById('importJsonFile')?.addEventListener('change', async (eve
       const parsedData = JSON.parse(e.target.result);
 
       let importedHomeData = [];
-      let importedLoans = [];
-      let importedFds = [];
 
       if (Array.isArray(parsedData)) {
         // Legacy backup format: Array of home transactions
         importedHomeData = parsedData.filter(validateTransaction);
       } else if (typeof parsedData === 'object' && parsedData !== null) {
-        // Structured backup format
         if (Array.isArray(parsedData.homeData)) {
           importedHomeData = parsedData.homeData.filter(validateTransaction);
         } else if (Array.isArray(parsedData.transactions)) {
           importedHomeData = parsedData.transactions.filter(validateTransaction);
         }
+      } else {
+        throw new Error('Invalid JSON format');
+      }
 
+      if (importedHomeData.length === 0) {
+        showToast('No valid transaction records found in file.', 'danger');
+        return;
+      }
+
+      transactions = importedHomeData;
+      saveLocalTransactionsCache();
+
+      if (currentUser && db) {
+        const batch = db.batch();
+        importedHomeData.forEach(t => {
+          const docRef = db.collection('users').doc(currentUser.uid).collection('transactions').doc(t.id);
+          batch.set(docRef, t);
+        });
+        await batch.commit();
+      }
+
+      populateMonthFilter();
+      renderApp();
+
+      showToast(`Successfully restored ${importedHomeData.length} transaction records!`, 'success');
+    } catch (error) {
+      console.error('Import error:', error);
+      showToast('Invalid backup file format.', 'danger');
+    } finally {
+      event.target.value = '';
+    }
+  };
+  reader.readAsText(file);
+});
+
+// JSON Export FD & Loan Backup Handler
+function handleExportFdLoanJson() {
+  try {
+    if (loans.length === 0 && fixedDeposits.length === 0) {
+      showToast('No active loan or FD records available to backup.', 'danger');
+      return;
+    }
+
+    const backupPayload = {
+      app: 'FinPulse',
+      type: 'FdLoanBackup',
+      version: CURRENT_APP_VERSION,
+      exportedAt: new Date().toISOString(),
+      fdLoanData: {
+        loans,
+        fixedDeposits,
+        updatedAt: new Date().toISOString()
+      }
+    };
+
+    const dataStr = JSON.stringify(backupPayload, null, 2);
+    const blob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const downloadAnchor = document.createElement('a');
+
+    downloadAnchor.href = url;
+    downloadAnchor.download = `FinPulse-FdLoan-Backup-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(downloadAnchor);
+    downloadAnchor.click();
+    document.body.removeChild(downloadAnchor);
+    URL.revokeObjectURL(url);
+
+    showToast('FD & Loan backup downloaded successfully!', 'success');
+  } catch (error) {
+    console.error('Export FD/Loan error:', error);
+    showToast('Failed to generate FD & Loan backup file.', 'danger');
+  }
+}
+
+document.getElementById('exportFdLoanJsonBtn')?.addEventListener('click', handleExportFdLoanJson);
+
+// JSON Import FD & Loan Restore
+document.getElementById('importFdLoanJsonFile')?.addEventListener('change', async (event) => {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = async function (e) {
+    try {
+      const parsedData = JSON.parse(e.target.result);
+
+      let importedLoans = [];
+      let importedFds = [];
+
+      if (typeof parsedData === 'object' && parsedData !== null) {
         if (parsedData.fdLoanData && typeof parsedData.fdLoanData === 'object') {
           if (Array.isArray(parsedData.fdLoanData.loans)) {
             importedLoans = parsedData.fdLoanData.loans;
@@ -1959,64 +2045,43 @@ document.getElementById('importJsonFile')?.addEventListener('change', async (eve
         throw new Error('Invalid JSON format');
       }
 
-      if (importedHomeData.length === 0 && importedLoans.length === 0 && importedFds.length === 0) {
-        showToast('No valid transaction, FD, or Loan records found in file.', 'danger');
+      if (importedLoans.length === 0 && importedFds.length === 0) {
+        showToast('No valid FD or Loan records found in file.', 'danger');
         return;
       }
 
-      let restoredSummary = [];
+      if (importedLoans.length > 0) loans = importedLoans;
+      if (importedFds.length > 0) fixedDeposits = importedFds;
 
-      // Restore Home Data
-      if (importedHomeData.length > 0) {
-        transactions = importedHomeData;
-        saveLocalTransactionsCache();
-        restoredSummary.push(`${importedHomeData.length} transactions`);
+      selectedLoanId = loans.length > 0 ? loans[0].id : null;
+      selectedFdId = fixedDeposits.length > 0 ? fixedDeposits[0].id : null;
 
-        if (currentUser && db) {
-          const batch = db.batch();
-          importedHomeData.forEach(t => {
-            const docRef = db.collection('users').doc(currentUser.uid).collection('transactions').doc(t.id);
-            batch.set(docRef, t);
-          });
-          await batch.commit();
-        }
+      saveLocalLoansAndFdsCache();
+
+      if (currentUser && db) {
+        const batch = db.batch();
+        importedLoans.forEach(l => {
+          const docRef = db.collection('users').doc(currentUser.uid).collection('loans').doc(l.id);
+          batch.set(docRef, l);
+        });
+        importedFds.forEach(f => {
+          const docRef = db.collection('users').doc(currentUser.uid).collection('fixedDeposits').doc(f.id);
+          batch.set(docRef, f);
+        });
+        await batch.commit();
       }
 
-      // Restore FD & Loan Data
-      if (importedLoans.length > 0 || importedFds.length > 0) {
-        if (importedLoans.length > 0) loans = importedLoans;
-        if (importedFds.length > 0) fixedDeposits = importedFds;
-
-        selectedLoanId = loans.length > 0 ? loans[0].id : null;
-        selectedFdId = fixedDeposits.length > 0 ? fixedDeposits[0].id : null;
-
-        saveLocalLoansAndFdsCache();
-
-        if (importedLoans.length > 0) restoredSummary.push(`${importedLoans.length} loans`);
-        if (importedFds.length > 0) restoredSummary.push(`${importedFds.length} FDs`);
-
-        if (currentUser && db) {
-          const batch = db.batch();
-          importedLoans.forEach(l => {
-            const docRef = db.collection('users').doc(currentUser.uid).collection('loans').doc(l.id);
-            batch.set(docRef, l);
-          });
-          importedFds.forEach(f => {
-            const docRef = db.collection('users').doc(currentUser.uid).collection('fixedDeposits').doc(f.id);
-            batch.set(docRef, f);
-          });
-          await batch.commit();
-        }
-      }
-
-      populateMonthFilter();
-      renderApp();
       renderFdLoanModule();
+      renderApp();
 
-      showToast(`Backup restored: ${restoredSummary.join(', ')}!`, 'success');
+      let restoredSummary = [];
+      if (importedLoans.length > 0) restoredSummary.push(`${importedLoans.length} loans`);
+      if (importedFds.length > 0) restoredSummary.push(`${importedFds.length} FDs`);
+
+      showToast(`FD & Loan backup restored: ${restoredSummary.join(', ')}!`, 'success');
     } catch (error) {
-      console.error('Import error:', error);
-      showToast('Invalid backup file format.', 'danger');
+      console.error('Import FD/Loan error:', error);
+      showToast('Invalid FD & Loan backup file format.', 'danger');
     } finally {
       event.target.value = '';
     }
@@ -2586,22 +2651,32 @@ function generateFdSchedule(fd) {
 
 function loadLocalLoansAndFdsCache() {
   try {
-    const storedFdLoanData = localStorage.getItem(FD_LOAN_STORAGE_KEY);
+    const storedFdLoanData = localStorage.getItem(FD_LOAN_STORAGE_KEY) || localStorage.getItem('finpulse_fd_loan_data');
     if (storedFdLoanData) {
       const parsed = JSON.parse(storedFdLoanData);
-      loans = Array.isArray(parsed.loans) ? parsed.loans : [];
-      fixedDeposits = Array.isArray(parsed.fixedDeposits) ? parsed.fixedDeposits : [];
+      if (parsed && typeof parsed === 'object') {
+        if (Array.isArray(parsed.loans)) {
+          loans = parsed.loans;
+        } else {
+          const storedLoans = localStorage.getItem(LOANS_STORAGE_KEY) || localStorage.getItem('finpulse_loans_v1');
+          loans = storedLoans ? JSON.parse(storedLoans) : [];
+        }
+        if (Array.isArray(parsed.fixedDeposits)) {
+          fixedDeposits = parsed.fixedDeposits;
+        } else {
+          const storedFds = localStorage.getItem(FDS_STORAGE_KEY) || localStorage.getItem('finpulse_fds_v1');
+          fixedDeposits = storedFds ? JSON.parse(storedFds) : [];
+        }
+      }
     } else {
-      const storedLoans = localStorage.getItem(LOANS_STORAGE_KEY);
+      const storedLoans = localStorage.getItem(LOANS_STORAGE_KEY) || localStorage.getItem('finpulse_loans_v1');
       loans = storedLoans ? JSON.parse(storedLoans) : [];
 
-      const storedFds = localStorage.getItem(FDS_STORAGE_KEY);
+      const storedFds = localStorage.getItem(FDS_STORAGE_KEY) || localStorage.getItem('finpulse_fds_v1');
       fixedDeposits = storedFds ? JSON.parse(storedFds) : [];
     }
   } catch (e) {
     console.error('Error reading FD/Loan cache:', e);
-    loans = [];
-    fixedDeposits = [];
   }
 
   selectedLoanId = loans.length > 0 ? loans[0].id : null;
@@ -2616,8 +2691,11 @@ function saveLocalLoansAndFdsCache() {
       updatedAt: new Date().toISOString()
     };
     localStorage.setItem(FD_LOAN_STORAGE_KEY, JSON.stringify(payload));
+    localStorage.setItem('finpulse_fd_loan_data', JSON.stringify(payload));
     localStorage.setItem(LOANS_STORAGE_KEY, JSON.stringify(loans));
+    localStorage.setItem('finpulse_loans_v1', JSON.stringify(loans));
     localStorage.setItem(FDS_STORAGE_KEY, JSON.stringify(fixedDeposits));
+    localStorage.setItem('finpulse_fds_v1', JSON.stringify(fixedDeposits));
   } catch (e) {
     console.error('Error saving FD/Loan cache:', e);
   }
@@ -3439,7 +3517,10 @@ function renderSavedLoansList() {
   loans.forEach(loan => {
     const emi = calculateLoanEMI(loan.principal, loan.annualRate, loan.tenureMonths);
     const paidCount = Array.isArray(loan.paidMonths) ? loan.paidMonths.length : 0;
-    const progressPct = Math.min(100, Math.round((paidCount / (loan.tenureMonths || 1)) * 100));
+    const schedule = generateAmortizationSchedule(loan);
+    const principal = parseFloat(loan.principal) || 0;
+    const principalPaidSoFar = schedule.reduce((sum, item) => item.isPaid ? sum + item.principalPaid : sum, 0);
+    const principalProgressPct = principal > 0 ? Math.min(100, Math.round((principalPaidSoFar / principal) * 100)) : 0;
     const isSelected = loan.id === selectedLoanId;
     const alertInfo = getLoanAlertInfo(loan);
 
@@ -3463,20 +3544,29 @@ function renderSavedLoansList() {
           </div>
           <span style="font-size: 0.78rem; color: var(--text-muted); display: inline-block; margin-top: 0.2rem;">${loan.annualRate}% p.a. &bull; ${loan.tenureMonths} Months</span>
         </div>
-        <button class="delete-btn" title="Delete Loan" onclick="event.stopPropagation(); window.deleteLoan('${loan.id}');">
-          <i class="fa-solid fa-trash-can"></i>
-        </button>
+        <div style="display: flex; align-items: center; gap: 0.35rem;">
+          <button class="edit-btn" title="Edit Loan" onclick="event.stopPropagation(); window.openEditLoanModal('${loan.id}');">
+            <i class="fa-solid fa-pen-to-square"></i>
+          </button>
+          <button class="delete-btn" title="Delete Loan" onclick="event.stopPropagation(); window.deleteLoan('${loan.id}');">
+            <i class="fa-solid fa-trash-can"></i>
+          </button>
+        </div>
       </div>
       <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; margin-top: 0.6rem; padding-top: 0.5rem; border-top: 1px solid rgba(255,255,255,0.06);">
         <span style="color: var(--text-secondary); font-size: 0.8rem;">Monthly EMI:</span>
         <span style="font-weight: 700; color: #818cf8; font-size: 0.9rem;">${formatCurrency(emi)}</span>
       </div>
-      <div class="custom-progress-bar" style="height: 6px; border-radius: 99px; margin-top: 0.6rem;">
-        <div class="custom-progress-fill indigo" style="width: ${progressPct}%;"></div>
+      <div class="custom-progress-bar" style="height: 6px; border-radius: 99px; margin-top: 0.6rem;" title="Principal Paid: ${formatCurrency(principalPaidSoFar)} / ${formatCurrency(principal)} (${principalProgressPct}%)">
+        <div class="custom-progress-fill indigo" style="width: ${principalProgressPct}%;"></div>
       </div>
       <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-muted); margin-top: 0.35rem;">
-        <span>Progress: ${paidCount}/${loan.tenureMonths} Paid</span>
-        <span style="font-weight: 600;">${progressPct}%</span>
+        <span>Principal Paid: ${formatCurrency(principalPaidSoFar)}</span>
+        <span style="font-weight: 600; color: #818cf8;">${principalProgressPct}%</span>
+      </div>
+      <div style="display: flex; justify-content: space-between; font-size: 0.72rem; color: var(--text-muted); margin-top: 0.15rem;">
+        <span>Installments: ${paidCount}/${loan.tenureMonths} Paid</span>
+        <span>Total: ${formatCurrency(principal)}</span>
       </div>
     `;
     container.appendChild(div);
@@ -3616,9 +3706,14 @@ function renderSavedFdsList() {
           </div>
           <span style="font-size: 0.78rem; color: var(--text-muted); display: inline-block; margin-top: 0.2rem;">${fd.annualRate}% p.a. &bull; ${fd.tenureMonths} Months (${fd.payoutFrequency === 'monthly' ? 'Monthly' : 'Maturity'})</span>
         </div>
-        <button class="delete-btn" title="Delete Fixed Deposit" onclick="event.stopPropagation(); window.deleteFd('${fd.id}');">
-          <i class="fa-solid fa-trash-can"></i>
-        </button>
+        <div style="display: flex; align-items: center; gap: 0.35rem;">
+          <button class="edit-btn" title="Edit Fixed Deposit" onclick="event.stopPropagation(); window.openEditFdModal('${fd.id}');">
+            <i class="fa-solid fa-pen-to-square"></i>
+          </button>
+          <button class="delete-btn" title="Delete Fixed Deposit" onclick="event.stopPropagation(); window.deleteFd('${fd.id}');">
+            <i class="fa-solid fa-trash-can"></i>
+          </button>
+        </div>
       </div>
       <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; margin-top: 0.6rem; padding-top: 0.5rem; border-top: 1px solid rgba(255,255,255,0.06);">
         <span style="color: var(--text-secondary); font-size: 0.8rem;">Monthly Yield:</span>
@@ -3833,91 +3928,276 @@ window.handleCollectFdInterest = function (fdId, monthNum) {
   renderApp();
 };
 
+window.handleDeleteLoan = function (loanId) {
+  console.log("[DeleteLoan] Start process for ID:", loanId);
+  
+  // 1. Correctly parse the localStorage key 'finpulse_fd_loan_data'
+  let currentData = {};
+  try {
+    const rawData = localStorage.getItem('finpulse_fd_loan_data');
+    if (rawData) {
+      currentData = JSON.parse(rawData);
+      console.log("[DeleteLoan] Successfully parsed existing finpulse_fd_loan_data:", currentData);
+    } else {
+      console.log("[DeleteLoan] No existing finpulse_fd_loan_data found, starting with empty object");
+    }
+  } catch (err) {
+    console.error("[DeleteLoan] Error parsing 'finpulse_fd_loan_data' from localStorage:", err);
+  }
+
+  const target = loans.find(l => String(l.id).trim() === String(loanId).trim());
+  if (!target) {
+    console.warn("[DeleteLoan] Target loan not found in active memory:", loanId);
+  } else {
+    console.log("[DeleteLoan] Target loan found:", target);
+  }
+
+  // 2. Filter the array
+  const updatedLoans = loans.filter(l => String(l.id).trim() !== String(loanId).trim());
+  console.log("[DeleteLoan] Filtered loans array. Previous count:", loans.length, "New count:", updatedLoans.length);
+
+  // 3. Update the React-like state
+  loans = updatedLoans;
+  if (String(selectedLoanId).trim() === String(loanId).trim()) {
+    selectedLoanId = loans.length > 0 ? loans[0].id : null;
+    console.log("[DeleteLoan] Reset selectedLoanId to:", selectedLoanId);
+  }
+
+  // 4. Re-serialize and save to localStorage (State & Storage synchronized)
+  try {
+    const newDataPayload = {
+      ...currentData,
+      loans: updatedLoans,
+      updatedAt: new Date().toISOString()
+    };
+    localStorage.setItem('finpulse_fd_loan_data', JSON.stringify(newDataPayload));
+    console.log("[DeleteLoan] Synchronized 'finpulse_fd_loan_data' in localStorage:", newDataPayload);
+  } catch (err) {
+    console.error("[DeleteLoan] Error saving 'finpulse_fd_loan_data' to localStorage:", err);
+  }
+
+  // Run general cache save helper to keep other secondary keys (e.g. LOANS_STORAGE_KEY) in sync
+  saveLocalLoansAndFdsCache();
+  console.log("[DeleteLoan] Finished sync with all local storage cache keys.");
+
+  // Firebase update
+  if (currentUser && db) {
+    console.log("[DeleteLoan] Syncing deletion to Firebase for uid:", currentUser.uid, "loanId:", loanId);
+    db.collection('users').doc(currentUser.uid).collection('loans').doc(loanId).delete();
+  }
+
+  // 5. Finally, close the modal/popup (after state and storage are synchronized)
+  if (typeof window.closeEditLoanModal === 'function') {
+    console.log("[DeleteLoan] Invoking closeEditLoanModal now that sync is done");
+    window.closeEditLoanModal();
+  }
+
+  // 6. Immediate UI Re-render
+  renderFdLoanModule();
+  renderApp();
+  showToast(`Loan "${target ? target.title : loanId}" deleted successfully.`, 'info');
+  console.log("[DeleteLoan] Process complete.");
+};
+
 window.deleteLoan = function (loanId) {
-  const target = loans.find(l => l.id === loanId);
+  console.log("deleteLoan called for ID:", loanId);
+  const target = loans.find(l => String(l.id).trim() === String(loanId).trim());
   if (!target) return;
-
   if (confirm(`Are you sure you want to delete "${target.title}"?`)) {
-    loans = loans.filter(l => l.id !== loanId);
-    if (selectedLoanId === loanId) {
-      selectedLoanId = loans.length > 0 ? loans[0].id : null;
-    }
-
-    saveLocalLoansCache();
-
-    if (currentUser && db) {
-      db.collection('users').doc(currentUser.uid).collection('loans').doc(loanId).delete();
-    }
-
-    renderFdLoanModule();
-    showToast(`Loan "${target.title}" deleted.`, 'info');
+    window.handleDeleteLoan(loanId);
   }
 };
 
 window.handleClearFdLoanData = async function () {
-  if (loans.length === 0 && fixedDeposits.length === 0) {
-    showToast('No active FD or Loan records to clear.', 'info');
-    return;
+  loans = [];
+  fixedDeposits = [];
+  selectedLoanId = null;
+  selectedFdId = null;
+
+  try {
+    localStorage.removeItem(FD_LOAN_STORAGE_KEY);
+    localStorage.removeItem(LOANS_STORAGE_KEY);
+    localStorage.removeItem(FDS_STORAGE_KEY);
+    localStorage.removeItem('finpulse_fd_loan_data');
+    localStorage.removeItem('finpulse_loans_v1');
+    localStorage.removeItem('finpulse_fds_v1');
+  } catch (e) {
+    console.error('LocalStorage clear error:', e);
   }
 
-  if (confirm('Are you sure you want to clear all active Loan facilities and Fixed Deposits? Home transaction records will remain untouched.')) {
-    loans = [];
-    fixedDeposits = [];
-    selectedLoanId = null;
-    selectedFdId = null;
+  renderFdLoanModule();
+  renderApp();
 
+  if (currentUser && db) {
     try {
-      localStorage.removeItem(FD_LOAN_STORAGE_KEY);
-      localStorage.removeItem(LOANS_STORAGE_KEY);
-      localStorage.removeItem(FDS_STORAGE_KEY);
-      localStorage.removeItem('finpulse_fd_loan_data');
-      localStorage.removeItem('finpulse_loans_v1');
-      localStorage.removeItem('finpulse_fds_v1');
-    } catch (e) {
-      console.error('LocalStorage clear error:', e);
+      const loansRef = db.collection('users').doc(currentUser.uid).collection('loans');
+      const fdsRef = db.collection('users').doc(currentUser.uid).collection('fixedDeposits');
+      const loansSnap = await loansRef.get();
+      const fdsSnap = await fdsRef.get();
+      const batch = db.batch();
+      loansSnap.forEach(doc => batch.delete(doc.ref));
+      fdsSnap.forEach(doc => batch.delete(doc.ref));
+      await batch.commit();
+    } catch (err) {
+      console.error('Firestore clear FD/Loan error:', err);
     }
-
-    saveLocalLoansAndFdsCache();
-
-    if (currentUser && db) {
-      try {
-        const loansRef = db.collection('users').doc(currentUser.uid).collection('loans');
-        const fdsRef = db.collection('users').doc(currentUser.uid).collection('fixedDeposits');
-        const loansSnap = await loansRef.get();
-        const fdsSnap = await fdsRef.get();
-        const batch = db.batch();
-        loansSnap.forEach(doc => batch.delete(doc.ref));
-        fdsSnap.forEach(doc => batch.delete(doc.ref));
-        await batch.commit();
-      } catch (err) {
-        console.error('Firestore clear FD/Loan error:', err);
-      }
-    }
-
-    renderFdLoanModule();
-    showToast('Active FD & Loan records cleared successfully.', 'info');
   }
+
+  renderFdLoanModule();
+  renderApp();
+  showToast('Active FD & Loan records cleared successfully.', 'info');
+};
+
+window.handleDeleteFD = function (fdId) {
+  console.log("[DeleteFD] Start process for ID:", fdId);
+
+  // 1. Correctly parse the localStorage key 'finpulse_fd_loan_data'
+  let currentData = {};
+  try {
+    const rawData = localStorage.getItem('finpulse_fd_loan_data');
+    if (rawData) {
+      currentData = JSON.parse(rawData);
+      console.log("[DeleteFD] Successfully parsed existing finpulse_fd_loan_data:", currentData);
+    } else {
+      console.log("[DeleteFD] No existing finpulse_fd_loan_data found, starting with empty object");
+    }
+  } catch (err) {
+    console.error("[DeleteFD] Error parsing 'finpulse_fd_loan_data' from localStorage:", err);
+  }
+
+  const target = fixedDeposits.find(f => String(f.id).trim() === String(fdId).trim());
+  if (!target) {
+    console.warn("[DeleteFD] Target Fixed Deposit not found in active memory:", fdId);
+  } else {
+    console.log("[DeleteFD] Target Fixed Deposit found:", target);
+  }
+
+  // 2. Filter the array
+  const updatedFDs = fixedDeposits.filter(f => String(f.id).trim() !== String(fdId).trim());
+  console.log("[DeleteFD] Filtered fixedDeposits array. Previous count:", fixedDeposits.length, "New count:", updatedFDs.length);
+
+  // 3. Update the React-like state
+  fixedDeposits = updatedFDs;
+  if (String(selectedFdId).trim() === String(fdId).trim()) {
+    selectedFdId = fixedDeposits.length > 0 ? fixedDeposits[0].id : null;
+    console.log("[DeleteFD] Reset selectedFdId to:", selectedFdId);
+  }
+
+  // 4. Re-serialize and save to localStorage (State & Storage synchronized)
+  try {
+    const newDataPayload = {
+      ...currentData,
+      fixedDeposits: updatedFDs,
+      fds: updatedFDs,
+      updatedAt: new Date().toISOString()
+    };
+    localStorage.setItem('finpulse_fd_loan_data', JSON.stringify(newDataPayload));
+    console.log("[DeleteFD] Synchronized 'finpulse_fd_loan_data' in localStorage:", newDataPayload);
+  } catch (err) {
+    console.error("[DeleteFD] Error saving 'finpulse_fd_loan_data' to localStorage:", err);
+  }
+
+  // Run general cache save helper to keep other secondary keys (e.g. FDS_STORAGE_KEY) in sync
+  saveLocalLoansAndFdsCache();
+  console.log("[DeleteFD] Finished sync with all local storage cache keys.");
+
+  // Firebase update
+  if (currentUser && db) {
+    console.log("[DeleteFD] Syncing deletion to Firebase for uid:", currentUser.uid, "fdId:", fdId);
+    db.collection('users').doc(currentUser.uid).collection('fixedDeposits').doc(fdId).delete();
+  }
+
+  // 5. Finally, close the modal/popup (after state and storage are synchronized)
+  if (typeof window.closeEditFdModal === 'function') {
+    console.log("[DeleteFD] Invoking closeEditFdModal now that sync is done");
+    window.closeEditFdModal();
+  }
+
+  // 6. Immediate UI Re-render
+  renderFdLoanModule();
+  renderApp();
+  showToast(`Fixed Deposit "${target ? target.title : fdId}" deleted successfully.`, 'info');
+  console.log("[DeleteFD] Process complete.");
 };
 
 window.deleteFd = function (fdId) {
-  const target = fixedDeposits.find(f => f.id === fdId);
+  console.log("deleteFd called for ID:", fdId);
+  const target = fixedDeposits.find(f => String(f.id).trim() === String(fdId).trim());
   if (!target) return;
-
   if (confirm(`Are you sure you want to delete "${target.title}"?`)) {
-    fixedDeposits = fixedDeposits.filter(f => f.id !== fdId);
-    if (selectedFdId === fdId) {
-      selectedFdId = fixedDeposits.length > 0 ? fixedDeposits[0].id : null;
-    }
-
-    saveLocalFdsCache();
-
-    if (currentUser && db) {
-      db.collection('users').doc(currentUser.uid).collection('fixedDeposits').doc(fdId).delete();
-    }
-
-    renderFdLoanModule();
-    showToast(`Fixed Deposit "${target.title}" deleted.`, 'info');
+    window.handleDeleteFD(fdId);
   }
+};
+
+window.openEditLoanModal = function (loanId) {
+  const loan = loans.find(l => l.id === loanId);
+  if (!loan) return;
+
+  const modal = document.getElementById('editLoanModal');
+  if (!modal) return;
+
+  document.getElementById('editLoanId').value = loan.id;
+  document.getElementById('editLoanTitle').value = loan.title || '';
+
+  const principalVal = currentCurrency === 'USD'
+    ? (parseFloat(loan.principal) / USD_TO_LKR_RATE).toFixed(2)
+    : parseFloat(loan.principal) || 0;
+
+  document.getElementById('editLoanPrincipal').value = principalVal;
+  document.getElementById('editLoanRate').value = loan.annualRate || '';
+  document.getElementById('editLoanTenure').value = loan.tenureMonths || '';
+  document.getElementById('editLoanStartDate').value = loan.startDate || getFormattedDate(0);
+
+  const currTextEls = modal.querySelectorAll('.editLoanCurrText');
+  const currSymEls = modal.querySelectorAll('.editLoanCurrSymbol');
+  const text = currentCurrency === 'USD' ? 'USD' : 'LKR';
+  const sym = currentCurrency === 'USD' ? '$' : 'Rs.';
+
+  currTextEls.forEach(el => el.textContent = text);
+  currSymEls.forEach(el => el.textContent = sym);
+
+  modal.classList.remove('hidden');
+};
+
+window.closeEditLoanModal = function () {
+  const modal = document.getElementById('editLoanModal');
+  if (modal) modal.classList.add('hidden');
+};
+
+window.openEditFdModal = function (fdId) {
+  const fd = fixedDeposits.find(f => f.id === fdId);
+  if (!fd) return;
+
+  const modal = document.getElementById('editFdModal');
+  if (!modal) return;
+
+  document.getElementById('editFdId').value = fd.id;
+  document.getElementById('editFdTitle').value = fd.title || '';
+
+  const depositVal = currentCurrency === 'USD'
+    ? (parseFloat(fd.depositAmount) / USD_TO_LKR_RATE).toFixed(2)
+    : parseFloat(fd.depositAmount) || 0;
+
+  document.getElementById('editFdDeposit').value = depositVal;
+  document.getElementById('editFdRate').value = fd.annualRate || '';
+  document.getElementById('editFdTenure').value = fd.tenureMonths || '';
+  document.getElementById('editFdPayoutFreq').value = fd.payoutFrequency || 'monthly';
+  document.getElementById('editFdStartDate').value = fd.startDate || getFormattedDate(0);
+
+  const currTextEls = modal.querySelectorAll('.editFdCurrText');
+  const currSymEls = modal.querySelectorAll('.editFdCurrSymbol');
+  const text = currentCurrency === 'USD' ? 'USD' : 'LKR';
+  const sym = currentCurrency === 'USD' ? '$' : 'Rs.';
+
+  currTextEls.forEach(el => el.textContent = text);
+  currSymEls.forEach(el => el.textContent = sym);
+
+  modal.classList.remove('hidden');
+};
+
+window.closeEditFdModal = function () {
+  const modal = document.getElementById('editFdModal');
+  if (modal) modal.classList.add('hidden');
 };
 
 function handleDownloadFdPdf() {
@@ -4490,6 +4770,130 @@ function setupFdLoanModuleListeners() {
       if (startDateInput) startDateInput.value = getFormattedDate(0);
       renderFdLoanModule();
       showToast(`Fixed Deposit "${title}" added successfully!`, 'success');
+    });
+  }
+
+  const editLoanForm = document.getElementById('editLoanForm');
+  if (editLoanForm) {
+    editLoanForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+
+      const loanId = document.getElementById('editLoanId').value;
+      const loan = loans.find(l => l.id === loanId);
+      if (!loan) {
+        showToast('Target loan not found.', 'danger');
+        return;
+      }
+
+      const title = document.getElementById('editLoanTitle').value.trim();
+      let principal = parseFloat(document.getElementById('editLoanPrincipal').value);
+      const annualRate = parseFloat(document.getElementById('editLoanRate').value);
+      const tenureMonths = parseInt(document.getElementById('editLoanTenure').value);
+      const startDate = document.getElementById('editLoanStartDate').value || getFormattedDate(0);
+
+      if (!title || isNaN(principal) || principal <= 0 || isNaN(annualRate) || isNaN(tenureMonths) || tenureMonths <= 0) {
+        showToast('Please enter valid loan details.', 'danger');
+        return;
+      }
+
+      if (currentCurrency === 'USD') {
+        principal = principal * USD_TO_LKR_RATE;
+      }
+
+      loan.title = title;
+      loan.principal = principal;
+      loan.annualRate = annualRate;
+      loan.tenureMonths = tenureMonths;
+      loan.startDate = startDate;
+      loan.updatedAt = new Date().toISOString();
+
+      if (Array.isArray(loan.paidMonths)) {
+        loan.paidMonths = loan.paidMonths.filter(m => m <= tenureMonths);
+      }
+
+      saveLocalLoansAndFdsCache();
+      renderApp();
+
+      if (currentUser && db) {
+        db.collection('users').doc(currentUser.uid).collection('loans').doc(loan.id).set(loan);
+      }
+
+      window.closeEditLoanModal();
+      renderFdLoanModule();
+      renderApp();
+      showToast(`Loan "${title}" updated & schedule recalculated!`, 'success');
+    });
+  }
+
+  const deleteLoanFromModalBtn = document.getElementById('deleteLoanFromModalBtn');
+  if (deleteLoanFromModalBtn) {
+    deleteLoanFromModalBtn.addEventListener('click', () => {
+      const loanId = document.getElementById('editLoanId').value;
+      console.log("Deleting loan id from modal:", loanId);
+      window.deleteLoan(loanId);
+    });
+  }
+
+  const editFdForm = document.getElementById('editFdForm');
+  if (editFdForm) {
+    editFdForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+
+      const fdId = document.getElementById('editFdId').value;
+      const fd = fixedDeposits.find(f => f.id === fdId);
+      if (!fd) {
+        showToast('Target Fixed Deposit not found.', 'danger');
+        return;
+      }
+
+      const title = document.getElementById('editFdTitle').value.trim();
+      let depositAmount = parseFloat(document.getElementById('editFdDeposit').value);
+      const annualRate = parseFloat(document.getElementById('editFdRate').value);
+      const tenureMonths = parseInt(document.getElementById('editFdTenure').value);
+      const payoutFrequency = document.getElementById('editFdPayoutFreq').value || 'monthly';
+      const startDate = document.getElementById('editFdStartDate').value || getFormattedDate(0);
+
+      if (!title || isNaN(depositAmount) || depositAmount <= 0 || isNaN(annualRate) || isNaN(tenureMonths) || tenureMonths <= 0) {
+        showToast('Please enter valid Fixed Deposit details.', 'danger');
+        return;
+      }
+
+      if (currentCurrency === 'USD') {
+        depositAmount = depositAmount * USD_TO_LKR_RATE;
+      }
+
+      fd.title = title;
+      fd.depositAmount = depositAmount;
+      fd.annualRate = annualRate;
+      fd.tenureMonths = tenureMonths;
+      fd.payoutFrequency = payoutFrequency;
+      fd.startDate = startDate;
+      fd.updatedAt = new Date().toISOString();
+
+      if (Array.isArray(fd.collectedMonths)) {
+        fd.collectedMonths = fd.collectedMonths.filter(m => m <= tenureMonths);
+      }
+
+      saveLocalFdsCache();
+      renderApp();
+
+      if (currentUser && db) {
+        db.collection('users').doc(currentUser.uid).collection('fixedDeposits').doc(fd.id).set(fd);
+      }
+
+      window.closeEditFdModal();
+      renderFdLoanModule();
+      renderApp();
+      showToast(`Fixed Deposit "${title}" updated & yield recalculated!`, 'success');
+    });
+  }
+
+  const deleteFdFromModalBtn = document.getElementById('deleteFdFromModalBtn');
+  if (deleteFdFromModalBtn) {
+    deleteFdFromModalBtn.addEventListener('click', () => {
+      const fdId = document.getElementById('editFdId').value;
+      console.log("Deleting FD id from modal:", fdId);
+      window.deleteFd(fdId);
     });
   }
 }

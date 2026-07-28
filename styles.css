@@ -242,8 +242,19 @@ body {
 }
 
 /* ==========================================================================
-   Summary Cards Section
+   Summary Cards Section & Subtle Entry Animations
    ========================================================================== */
+@keyframes summaryCardSlideFadeIn {
+  0% {
+    opacity: 0;
+    transform: translateY(18px) scale(0.98);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 .summary-cards {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
@@ -257,6 +268,39 @@ body {
   gap: 1.25rem;
   position: relative;
   overflow: hidden;
+  animation: summaryCardSlideFadeIn 0.55s cubic-bezier(0.16, 1, 0.3, 1) both;
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s ease, border-color 0.3s ease, background-color 0.3s ease;
+  will-change: transform, opacity;
+}
+
+.metric-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.25);
+}
+
+body.light-theme .metric-card:hover {
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.08);
+}
+
+/* Staggered Entry Delays for Summary Cards */
+.summary-cards > *:nth-child(1),
+.fd-loan-summary-grid > *:nth-child(1) {
+  animation-delay: 0.08s;
+}
+
+.summary-cards > *:nth-child(2),
+.fd-loan-summary-grid > *:nth-child(2) {
+  animation-delay: 0.18s;
+}
+
+.summary-cards > *:nth-child(3),
+.fd-loan-summary-grid > *:nth-child(3) {
+  animation-delay: 0.28s;
+}
+
+.summary-cards > *:nth-child(4),
+.fd-loan-summary-grid > *:nth-child(4) {
+  animation-delay: 0.38s;
 }
 
 .metric-card::before {
@@ -911,6 +955,27 @@ body {
   padding: 0.35rem;
   border-radius: 6px;
   transition: all var(--transition-fast);
+}
+
+.delete-btn:hover {
+  color: #f43f5e;
+  background: rgba(244, 63, 94, 0.15);
+}
+
+.edit-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  cursor: pointer;
+  padding: 0.35rem;
+  border-radius: 6px;
+  transition: all var(--transition-fast);
+}
+
+.edit-btn:hover {
+  color: #818cf8;
+  background: rgba(99, 102, 241, 0.15);
 }
 
 @media (min-width: 640px) {
@@ -2657,7 +2722,21 @@ body.light-theme .facility-card-item.selected {
   border: 1px solid rgba(255, 255, 255, 0.08);
   padding: 0.75rem 0.9rem;
   border-radius: 0.85rem;
+  animation: summaryCardSlideFadeIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.25s ease, background-color 0.25s ease;
+  will-change: transform, opacity;
 }
+
+.summary-stat-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.summary-stats-grid > *:nth-child(1) { animation-delay: 0.05s; }
+.summary-stats-grid > *:nth-child(2) { animation-delay: 0.12s; }
+.summary-stats-grid > *:nth-child(3) { animation-delay: 0.19s; }
+.summary-stats-grid > *:nth-child(4) { animation-delay: 0.26s; }
+.summary-stats-grid > *:nth-child(5) { animation-delay: 0.33s; }
 
 body.light-theme .summary-stat-card {
   background: #ffffff;
