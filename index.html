@@ -569,6 +569,9 @@
           <button type="button" id="subtabFdsBtn" class="subnav-btn">
             <i class="fa-solid fa-coins"></i> Fixed Deposit (FD) Tracker
           </button>
+          <button type="button" id="subtabComparisonBtn" class="subnav-btn">
+            <i class="fa-solid fa-chart-line"></i> Liabilities vs Assets Comparison
+          </button>
         </div>
         <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
           <span style="font-size: 0.8rem; color: var(--text-muted);">
@@ -949,6 +952,65 @@
                   </table>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Net Liabilities vs Assets Comparison View Container -->
+      <div id="comparisonTrackerContainer" class="module-tab-content hidden">
+        <div style="display: flex; flex-direction: column; gap: 1.25rem;">
+          <!-- Metric Summary Cards Row -->
+          <div class="fd-loan-summary-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem;">
+            <div class="glass-card summary-stat-card" style="padding: 1.25rem; border-left: 4px solid var(--accent-indigo);">
+              <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem;">
+                <span style="font-size: 0.78rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">Total Active Loan Principal</span>
+                <i class="fa-solid fa-hand-holding-hand" style="color: var(--accent-indigo); font-size: 1.1rem;"></i>
+              </div>
+              <div id="comparisonTotalLoan" style="font-size: 1.4rem; font-weight: 800; color: var(--text-primary); margin-bottom: 0.25rem;">$0.00</div>
+              <span style="font-size: 0.75rem; color: var(--text-muted);">Current outstanding loan balance</span>
+            </div>
+
+            <div class="glass-card summary-stat-card" style="padding: 1.25rem; border-left: 4px solid #10b981;">
+              <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem;">
+                <span style="font-size: 0.78rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">Total Active FD Assets</span>
+                <i class="fa-solid fa-coins" style="color: #10b981; font-size: 1.1rem;"></i>
+              </div>
+              <div id="comparisonTotalFd" style="font-size: 1.4rem; font-weight: 800; color: var(--text-primary); margin-bottom: 0.25rem;">$0.00</div>
+              <span style="font-size: 0.75rem; color: var(--text-muted);">Current principal & earned interest in FDs</span>
+            </div>
+
+            <div class="glass-card summary-stat-card" id="comparisonNetCard" style="padding: 1.25rem; border-left: 4px solid #3b82f6;">
+              <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem;">
+                <span style="font-size: 0.78rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">Net Position (Assets - Debt)</span>
+                <i id="comparisonNetIcon" class="fa-solid fa-scale-balanced" style="color: #3b82f6; font-size: 1.1rem;"></i>
+              </div>
+              <div id="comparisonNetPos" style="font-size: 1.4rem; font-weight: 800; color: var(--text-primary); margin-bottom: 0.25rem;">$0.00</div>
+              <span id="comparisonNetLabel" style="font-size: 0.75rem; color: var(--text-muted);">FD Assets minus Loan Liabilities</span>
+            </div>
+          </div>
+
+          <!-- Main Comparison Chart Card -->
+          <div class="glass-card rounded-2xl" style="padding: 1.5rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.25rem;">
+              <div>
+                <h3 style="font-size: 1.1rem; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 0.5rem;">
+                  <i class="fa-solid fa-chart-line" style="color: var(--accent-indigo);"></i> Total Loan Liabilities vs Total FD Assets (12 Months)
+                </h3>
+                <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.2rem;">
+                  Historical and projected 12-month net debt-to-asset trajectory
+                </p>
+              </div>
+            </div>
+
+            <div id="comparisonChartEmptyState" class="empty-state hidden" style="padding: 3rem 1rem; text-align: center;">
+              <i class="fa-solid fa-chart-area" style="font-size: 2.5rem; color: var(--text-muted); margin-bottom: 0.75rem; opacity: 0.5;"></i>
+              <p class="empty-title">No Active Loans or Fixed Deposits</p>
+              <p class="empty-subtitle">Add loan facilities or fixed deposits to see your net debt-to-asset trajectory.</p>
+            </div>
+
+            <div id="comparisonChartCanvasWrapper" style="position: relative; height: 360px; width: 100%;">
+              <canvas id="comparisonAnalyticsChartCanvas"></canvas>
             </div>
           </div>
         </div>

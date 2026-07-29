@@ -112,6 +112,7 @@ let loanChartMode = 'monthly';
 let fdChartMode = 'monthly';
 let loanAnalyticsChartInstance = null;
 let fdAnalyticsChartInstance = null;
+let comparisonAnalyticsChartInstance = null;
 
 // DOM Elements
 let totalBalanceEl, totalIncomeEl, totalExpensesEl, balanceStatusEl;
@@ -3415,6 +3416,7 @@ function renderFdLoanModule() {
   renderSavedFdsList();
   renderFdAnalyticsChart();
   renderFdEarningsSchedule();
+  renderComparisonAnalyticsChart();
 }
 
 // --------------------------------------------------------------------------
@@ -3815,6 +3817,276 @@ function renderFdAnalyticsChart() {
           }
         },
         animation: { duration: 400, easing: 'easeOutQuart' }
+      }
+    });
+  }
+}
+
+function renderComparisonAnalyticsChart() {
+  const emptyState = document.getElementById('comparisonChartEmptyState');
+  const canvasWrapper = document.getElementById('comparisonChartCanvasWrapper');
+  const canvas = document.getElementById('comparisonAnalyticsChartCanvas');
+
+  const totalLoanEl = document.getElementById('comparisonTotalLoan');
+  const totalFdEl = document.getElementById('comparisonTotalFd');
+  const netPosEl = document.getElementById('comparisonNetPos');
+  const netCardEl = document.getElementById('comparisonNetCard');
+  const netIconEl = document.getElementById('comparisonNetIcon');
+  const netLabelEl = document.getElementById('comparisonNetLabel');
+
+  // Calculate current top summary numbers
+  const currentTotalLoans = loans.reduce((sum, loan) => {
+    const schedule = generateAmortizationSchedule(loan);
+    const paidCount = Array.isArray(loan.paidMonths) ? loan.paidMonths.length : 0;
+    if (paidCount > 0 && schedule[paidCount - 1]) {
+      return sum + schedule[paidCount - 1].remainingBalance;
+    }
+    return sum + (parseFloat(loan.principal) || 0);
+  }, 0);
+
+  const currentTotalFds = fixedDeposits.reduce((sum, fd) => {
+    const deposit = parseFloat(fd.depositAmount) || 0;
+    const collectedCount = Array.isArray(fd.collectedMonths) ? fd.collectedMonths.length : 0;
+    const tenure = parseInt(fd.tenureMonths) || 12;
+    const { monthlyInterest } = calculateFdEarnings(deposit, fd.annualRate, tenure, fd.payoutFrequency);
+    return sum + deposit + (collectedCount * monthlyInterest);
+  }, 0);
+
+  const netPos = currentTotalFds - currentTotalLoans;
+
+  if (totalLoanEl) totalLoanEl.textContent = formatCurrency(currentTotalLoans);
+  if (totalFdEl) totalFdEl.textContent = formatCurrency(currentTotalFds);
+  if (netPosEl) {
+    netPosEl.textContent = (netPos >= 0 ? '+' : '') + formatCurrency(netPos);
+    if (netPos >= 0) {
+      netPosEl.style.color = '#10b981';
+      if (netCardEl) netCardEl.style.borderLeftColor = '#10b981';
+      if (netIconEl) {
+        netIconEl.style.color = '#10b981';
+        netIconEl.className = 'fa-solid fa-arrow-trend-up';
+      }
+      if (netLabelEl) netLabelEl.textContent = 'FD Assets exceed Loan Debt (Net Positive)';
+    } else {
+      netPosEl.style.color = '#f43f5e';
+      if (netCardEl) netCardEl.style.borderLeftColor = '#f43f5e';
+      if (netIconEl) {
+        netIconEl.style.color = '#f43f5e';
+        netIconEl.className = 'fa-solid fa-arrow-trend-down';
+      }
+      if (netLabelEl) netLabelEl.textContent = 'Loan Debt exceeds FD Assets (Net Liabilities)';
+    }
+  }
+
+  if (!emptyState || !canvasWrapper || !canvas) return;
+
+  if ((!loans || loans.length === 0) && (!fixedDeposits || fixedDeposits.length === 0)) {
+    emptyState.classList.remove('hidden');
+    canvasWrapper.classList.add('hidden');
+    if (comparisonAnalyticsChartInstance) {
+      comparisonAnalyticsChartInstance.destroy();
+      comparisonAnalyticsChartInstance = null;
+    }
+    return;
+  }
+
+  emptyState.classList.add('hidden');
+  canvasWrapper.classList.remove('hidden');
+
+  // Build 12-month timeline
+  const now = new Date();
+  const monthList = [];
+  for (let i = 11; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    monthList.push({
+      year: d.getFullYear(),
+      month: d.getMonth(),
+      label: d.toLocaleDateString('default', { month: 'short', year: '2-digit' }),
+      lastDay: new Date(d.getFullYear(), d.getMonth() + 1, 0)
+    });
+  }
+
+  const labels = monthList.map(m => m.label);
+  const loanTrajectory = [];
+  const fdTrajectory = [];
+  const netTrajectory = [];
+
+  monthList.forEach(mObj => {
+    // 1. Calculate Total Loans Balance at mObj.lastDay
+    let mLoanTotal = 0;
+    loans.forEach(loan => {
+      const p = parseFloat(loan.principal) || 0;
+      const tenure = parseInt(loan.tenureMonths) || 12;
+      const startDt = loan.startDate ? new Date(loan.startDate + 'T00:00:00') : new Date();
+      startDt.setHours(0,0,0,0);
+
+      const schedule = generateAmortizationSchedule(loan);
+      if (mObj.lastDay < startDt) {
+        mLoanTotal += 0;
+      } else {
+        const monthsElapsed = (mObj.year - startDt.getFullYear()) * 12 + (mObj.month - startDt.getMonth()) + 1;
+        if (monthsElapsed <= 0) {
+          mLoanTotal += p;
+        } else if (monthsElapsed >= tenure) {
+          mLoanTotal += 0;
+        } else if (schedule[monthsElapsed - 1]) {
+          mLoanTotal += schedule[monthsElapsed - 1].remainingBalance;
+        } else {
+          mLoanTotal += p;
+        }
+      }
+    });
+
+    // 2. Calculate Total FD Value at mObj.lastDay
+    let mFdTotal = 0;
+    fixedDeposits.forEach(fd => {
+      const deposit = parseFloat(fd.depositAmount) || 0;
+      const tenure = parseInt(fd.tenureMonths) || 12;
+      const startDt = fd.startDate ? new Date(fd.startDate + 'T00:00:00') : new Date();
+      startDt.setHours(0,0,0,0);
+
+      const earnings = calculateFdEarnings(deposit, fd.annualRate, tenure, fd.payoutFrequency);
+      if (mObj.lastDay < startDt) {
+        mFdTotal += 0;
+      } else {
+        const monthsElapsed = (mObj.year - startDt.getFullYear()) * 12 + (mObj.month - startDt.getMonth()) + 1;
+        if (monthsElapsed <= 0) {
+          mFdTotal += deposit;
+        } else if (monthsElapsed >= tenure) {
+          mFdTotal += deposit + earnings.totalInterest;
+        } else {
+          const cumInterest = Math.round(earnings.monthlyInterest * monthsElapsed * 100) / 100;
+          mFdTotal += deposit + cumInterest;
+        }
+      }
+    });
+
+    loanTrajectory.push(mLoanTotal);
+    fdTrajectory.push(mFdTotal);
+    netTrajectory.push(mFdTotal - mLoanTotal);
+  });
+
+  const isLight = currentTheme === 'light';
+  const textColor = isLight ? '#475569' : '#94a3b8';
+  const gridColor = isLight ? 'rgba(0, 0, 0, 0.06)' : 'rgba(255, 255, 255, 0.06)';
+
+  if (comparisonAnalyticsChartInstance) {
+    comparisonAnalyticsChartInstance.data.labels = labels;
+    comparisonAnalyticsChartInstance.data.datasets[0].data = loanTrajectory;
+    comparisonAnalyticsChartInstance.data.datasets[1].data = fdTrajectory;
+    comparisonAnalyticsChartInstance.data.datasets[2].data = netTrajectory;
+
+    if (comparisonAnalyticsChartInstance.options.scales.x) {
+      comparisonAnalyticsChartInstance.options.scales.x.ticks.color = textColor;
+      comparisonAnalyticsChartInstance.options.scales.x.grid.color = gridColor;
+    }
+    if (comparisonAnalyticsChartInstance.options.scales.y) {
+      comparisonAnalyticsChartInstance.options.scales.y.ticks.color = textColor;
+      comparisonAnalyticsChartInstance.options.scales.y.grid.color = gridColor;
+    }
+    if (comparisonAnalyticsChartInstance.options.plugins.legend) {
+      comparisonAnalyticsChartInstance.options.plugins.legend.labels.color = textColor;
+    }
+    comparisonAnalyticsChartInstance.update();
+  } else {
+    const ctx = canvas.getContext('2d');
+    comparisonAnalyticsChartInstance = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: [
+          {
+            label: 'Total Loan Liabilities',
+            data: loanTrajectory,
+            borderColor: '#f43f5e',
+            backgroundColor: 'rgba(244, 63, 94, 0.12)',
+            borderWidth: 2.5,
+            pointBackgroundColor: '#e11d48',
+            pointBorderColor: '#ffffff',
+            pointRadius: 4,
+            tension: 0.3,
+            fill: true
+          },
+          {
+            label: 'Total FD Assets',
+            data: fdTrajectory,
+            borderColor: '#10b981',
+            backgroundColor: 'rgba(16, 185, 129, 0.12)',
+            borderWidth: 2.5,
+            pointBackgroundColor: '#059669',
+            pointBorderColor: '#ffffff',
+            pointRadius: 4,
+            tension: 0.3,
+            fill: true
+          },
+          {
+            label: 'Net Trajectory (Assets - Debt)',
+            data: netTrajectory,
+            borderColor: '#38bdf8',
+            backgroundColor: 'transparent',
+            borderWidth: 3,
+            borderDash: [5, 5],
+            pointBackgroundColor: '#0284c7',
+            pointBorderColor: '#ffffff',
+            pointRadius: 4,
+            tension: 0.3,
+            fill: false
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: {
+          mode: 'index',
+          intersect: false
+        },
+        plugins: {
+          legend: {
+            position: 'top',
+            labels: {
+              color: textColor,
+              font: { family: 'Plus Jakarta Sans', size: 11, weight: '600' },
+              usePointStyle: true,
+              boxWidth: 8,
+              padding: 12
+            }
+          },
+          tooltip: {
+            backgroundColor: isLight ? '#ffffff' : '#0f172a',
+            titleColor: isLight ? '#0f172a' : '#f8fafc',
+            bodyColor: isLight ? '#334155' : '#cbd5e1',
+            borderColor: 'rgba(255, 255, 255, 0.1)',
+            borderWidth: 1,
+            padding: 10,
+            usePointStyle: true,
+            callbacks: {
+              label: function (context) {
+                const label = context.dataset.label || '';
+                const value = context.parsed.y || 0;
+                return ` ${label}: ${formatCurrency(value)}`;
+              }
+            }
+          }
+        },
+        scales: {
+          x: {
+            grid: { color: gridColor },
+            ticks: {
+              color: textColor,
+              font: { family: 'Plus Jakarta Sans', size: 10 }
+            }
+          },
+          y: {
+            grid: { color: gridColor },
+            ticks: {
+              color: textColor,
+              font: { family: 'Plus Jakarta Sans', size: 10 },
+              callback: function (val) {
+                return formatCurrencyShort(val);
+              }
+            }
+          }
+        }
       }
     });
   }
@@ -5086,9 +5358,11 @@ function setupFdLoanModuleListeners() {
 
   const subtabLoansBtn = document.getElementById('subtabLoansBtn');
   const subtabFdsBtn = document.getElementById('subtabFdsBtn');
+  const subtabComparisonBtn = document.getElementById('subtabComparisonBtn');
   const clearFdLoanDataBtn = document.getElementById('clearFdLoanDataBtn');
   const loanTrackerContainer = document.getElementById('loanTrackerContainer');
   const fdTrackerContainer = document.getElementById('fdTrackerContainer');
+  const comparisonTrackerContainer = document.getElementById('comparisonTrackerContainer');
 
   if (clearFdLoanDataBtn) {
     clearFdLoanDataBtn.addEventListener('click', () => {
@@ -5101,17 +5375,34 @@ function setupFdLoanModuleListeners() {
       currentFdLoanSubtab = 'loans';
       subtabLoansBtn.classList.add('active');
       subtabFdsBtn.classList.remove('active');
+      if (subtabComparisonBtn) subtabComparisonBtn.classList.remove('active');
       loanTrackerContainer.classList.remove('hidden');
       fdTrackerContainer.classList.add('hidden');
+      if (comparisonTrackerContainer) comparisonTrackerContainer.classList.add('hidden');
     });
 
     subtabFdsBtn.addEventListener('click', () => {
       currentFdLoanSubtab = 'fds';
       subtabFdsBtn.classList.add('active');
       subtabLoansBtn.classList.remove('active');
+      if (subtabComparisonBtn) subtabComparisonBtn.classList.remove('active');
       fdTrackerContainer.classList.remove('hidden');
       loanTrackerContainer.classList.add('hidden');
+      if (comparisonTrackerContainer) comparisonTrackerContainer.classList.add('hidden');
     });
+
+    if (subtabComparisonBtn && comparisonTrackerContainer) {
+      subtabComparisonBtn.addEventListener('click', () => {
+        currentFdLoanSubtab = 'comparison';
+        subtabComparisonBtn.classList.add('active');
+        subtabLoansBtn.classList.remove('active');
+        subtabFdsBtn.classList.remove('active');
+        comparisonTrackerContainer.classList.remove('hidden');
+        loanTrackerContainer.classList.add('hidden');
+        fdTrackerContainer.classList.add('hidden');
+        renderComparisonAnalyticsChart();
+      });
+    }
   }
 
   // Date Filter Listeners for Loans and FDs
